@@ -1,86 +1,109 @@
-import React from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  ActivityIndicator,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import Button from '../../components/Button';
 import theme from '../../styles/theme';
 import { MainStackNavigationProp } from '../../navigation/types';
+import { useGame } from '../../contexts/GameContext';
+import { Game } from '../../services/gameService';
 
 const { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOW } = theme;
 
-// Sample data for games
-const GAMES_DATA = [
-  {
-    id: '1',
-    title: 'Friendly Match',
-    date: 'May 15, 2024',
-    location: 'Central Park Courts',
-    players: 4,
-    status: 'scheduled',
-  },
-  {
-    id: '2',
-    title: 'Practice Session',
-    date: 'May 18, 2024',
-    location: 'Community Center',
-    players: 6,
-    status: 'scheduled',
-  },
-  {
-    id: '3',
-    title: 'Weekly Tournament Round 1',
-    date: 'May 20, 2024',
-    location: 'Sports Complex',
-    players: 8,
-    status: 'scheduled',
-  },
-  {
-    id: '4',
-    title: 'Advanced Skills Practice',
-    date: 'May 22, 2024',
-    location: 'Recreation Center',
-    players: 4,
-    status: 'scheduled',
-  },
-];
-
 const GamesScreen: React.FC = () => {
   const navigation = useNavigation<MainStackNavigationProp>();
+  const { games, loading, error, loadGames } = useGame();
+  const [refreshing, setRefreshing] = useState(false);
 
-  const renderGameItem = ({ item }: { item: (typeof GAMES_DATA)[0] }) => (
+  useEffect(() => {
+    loadGames();
+  }, [loadGames]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadGames();
+    setRefreshing(false);
+  };
+
+  const getStatusColor = (status: Game['status']) => {
+    switch (status) {
+      case 'open':
+        return styles.openBadge;
+      case 'full':
+        return styles.fullBadge;
+      case 'completed':
+        return styles.completedBadge;
+      case 'cancelled':
+        return styles.cancelledBadge;
+      default:
+        return styles.openBadge;
+    }
+  };
+
+  const getStatusText = (status: Game['status']) => {
+    switch (status) {
+      case 'open':
+        return 'Open';
+      case 'full':
+        return 'Full';
+      case 'completed':
+        return 'Completed';
+      case 'cancelled':
+        return 'Cancelled';
+      default:
+        return 'Open';
+    }
+  };
+
+  const formatDateTime = (date: string, time: string) => {
+    const gameDate = new Date(`${date}T${time}`);
+    return gameDate.toLocaleString();
+  };
+
+  const renderGameItem = ({ item }: { item: Game }) => (
     <TouchableOpacity
       style={styles.gameCard}
-      onPress={() => navigation.navigate('GameDetails', { id: item.id })}
+      onPress={() => navigation.navigate('GameDetails', { id: item.id.toString() })}
     >
-      <Text style={styles.gameTitle}>{item.title}</Text>
+      <Text style={styles.gameTitle}>{`${item.skill_level} Game`}</Text>
       <View style={styles.gameDetails}>
-        <Text style={styles.gameDetailText}>📅 {item.date}</Text>
+        <Text style={styles.gameDetailText}>📅 {formatDateTime(item.date, item.time)}</Text>
         <Text style={styles.gameDetailText}>📍 {item.location}</Text>
-        <Text style={styles.gameDetailText}>👥 {item.players} players</Text>
+        <Text style={styles.gameDetailText}>
+          👥 {item.current_players}/{item.max_players} players
+        </Text>
       </View>
       <View style={styles.statusContainer}>
-        <View
-          style={[
-            styles.statusBadge,
-            item.status === 'scheduled' && styles.scheduledBadge,
-            item.status === 'inProgress' && styles.inProgressBadge,
-            item.status === 'completed' && styles.completedBadge,
-            item.status === 'cancelled' && styles.cancelledBadge,
-          ]}
-        >
-          <Text style={styles.statusText}>
-            {item.status === 'scheduled'
-              ? 'Scheduled'
-              : item.status === 'inProgress'
-                ? 'In Progress'
-                : item.status === 'completed'
-                  ? 'Completed'
-                  : 'Cancelled'}
-          </Text>
+        <View style={[styles.statusBadge, getStatusColor(item.status)]}>
+          <Text style={styles.statusText}>{getStatusText(item.status)}</Text>
         </View>
       </View>
     </TouchableOpacity>
   );
+
+  if (loading && !refreshing) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.centerContainer}>
+        <Text style={styles.errorText}>{error}</Text>
+        <Button title="Retry" onPress={loadGames} size="small" />
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -94,11 +117,13 @@ const GamesScreen: React.FC = () => {
       </View>
 
       <FlatList
-        data={GAMES_DATA}
+        data={games}
         renderItem={renderGameItem}
-        keyExtractor={item => item.id}
+        keyExtractor={item => item.id.toString()}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContainer}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
       />
     </SafeAreaView>
   );
@@ -108,6 +133,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+  },
+  errorText: {
+    color: COLORS.error,
+    marginBottom: SPACING.md,
+    textAlign: 'center',
   },
   header: {
     flexDirection: 'row',
@@ -155,10 +191,10 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.xs,
     borderRadius: BORDER_RADIUS.round,
   },
-  scheduledBadge: {
+  openBadge: {
     backgroundColor: COLORS.primaryLight,
   },
-  inProgressBadge: {
+  fullBadge: {
     backgroundColor: COLORS.secondaryLight,
   },
   completedBadge: {

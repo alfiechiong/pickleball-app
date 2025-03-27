@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -18,6 +18,7 @@ import * as yup from 'yup';
 import Button from '../../components/Button';
 import theme from '../../styles/theme';
 import { AuthStackNavigationProp } from '../../navigation/types';
+import { useAuth } from '../../contexts/AuthContext';
 
 const { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS } = theme;
 
@@ -34,7 +35,7 @@ type LoginFormData = {
 
 const LoginScreen: React.FC = () => {
   const navigation = useNavigation<AuthStackNavigationProp>();
-  const [isLoading, setIsLoading] = useState(false);
+  const { login, error, clearError } = useAuth();
 
   const {
     control,
@@ -49,15 +50,12 @@ const LoginScreen: React.FC = () => {
   });
 
   const onSubmit = async (data: LoginFormData) => {
-    setIsLoading(true);
-
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      console.log('Login attempt with:', data);
-      // In a real app, you would handle authentication here
-      // and update your auth context/state
-    }, 1500);
+    try {
+      clearError();
+      await login(data);
+    } catch (err) {
+      Alert.alert('Login Failed', error || 'An error occurred while logging in');
+    }
   };
 
   return (
@@ -123,7 +121,7 @@ const LoginScreen: React.FC = () => {
               title="Login"
               onPress={handleSubmit(onSubmit)}
               fullWidth
-              loading={isLoading}
+              loading={false}
               style={styles.button}
             />
 
@@ -200,7 +198,7 @@ const styles = StyleSheet.create({
     marginTop: SPACING.xs,
   },
   forgotPasswordContainer: {
-    alignSelf: 'flex-end',
+    alignItems: 'flex-end',
     marginBottom: SPACING.md,
   },
   forgotPasswordText: {
@@ -208,22 +206,23 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.sm,
   },
   button: {
-    marginVertical: SPACING.md,
+    marginBottom: SPACING.md,
   },
   registerContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: SPACING.lg,
+    alignItems: 'center',
+    marginTop: SPACING.md,
   },
   registerText: {
     color: COLORS.textSecondary,
     fontSize: FONT_SIZES.sm,
+    marginRight: SPACING.xs,
   },
   registerLink: {
     color: COLORS.primary,
-    fontWeight: 'bold',
     fontSize: FONT_SIZES.sm,
-    marginLeft: SPACING.xs,
+    fontWeight: 'bold',
   },
 });
 

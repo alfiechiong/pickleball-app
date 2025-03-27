@@ -122,24 +122,23 @@ export const refresh = async (req: Request, res: Response, next: NextFunction): 
 /**
  * Logout user
  */
-export const logout = async (
-  req: AuthenticatedRequest,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+export const logout = async (req: Request, res: Response) => {
   try {
-    const userId = req.user?.id;
-    if (!userId) {
-      throw createError(401, 'Not authenticated');
-    }
+    // Clear the refresh token in the database
+    await User.update({ refresh_token: null }, { where: { id: req.user!.id } });
 
-    await invalidateRefreshToken(userId);
+    // Clear cookies
+    res.clearCookie('refreshToken');
+    res.clearCookie('accessToken');
 
-    res.json({
-      message: 'Logged out successfully',
+    res.status(200).json({
+      status: 'success',
+      message: 'Successfully logged out',
     });
   } catch (error) {
-    logger.error('Logout error:', error);
-    next(error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Error logging out',
+    });
   }
 };

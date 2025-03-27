@@ -12,6 +12,7 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "assetBundlePatterns": ["assets/*", "assets/images/*"],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.pickleball.app"

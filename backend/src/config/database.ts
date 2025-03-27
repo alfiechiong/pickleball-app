@@ -1,4 +1,4 @@
-import { Dialect } from 'sequelize';
+import { Sequelize, Dialect } from 'sequelize';
 import config from './index';
 
 interface DatabaseConfig {
@@ -43,4 +43,12 @@ const dbConfig: DatabaseConfig = {
   },
 };
 
-export default dbConfig;
+const env = process.env.NODE_ENV || 'development';
+const db = new Sequelize(dbConfig[env].database, dbConfig[env].username, dbConfig[env].password, {
+  host: dbConfig[env].host,
+  port: dbConfig[env].port,
+  dialect: dbConfig[env].dialect,
+  logging: dbConfig[env].logging,
+});
+
+export default db;

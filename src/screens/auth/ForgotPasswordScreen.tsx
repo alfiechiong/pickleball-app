@@ -2,28 +2,18 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Button from '../../components/Button';
-import { useNavigation } from '@react-navigation/native';
-import { AuthStackNavigationProp } from '../../navigation/types';
 import theme from '../../styles/theme';
 
 const { COLORS, SPACING, FONT_SIZES } = theme;
 
 const ForgotPasswordScreen: React.FC = () => {
-  const navigation = useNavigation<AuthStackNavigationProp>();
-
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        <Text style={styles.title}>Forgot Password</Text>
+        <Text style={styles.title}>ForgotPassword</Text>
         <Text style={styles.message}>
-          This is a placeholder for the Forgot Password screen. The full implementation will come in
-          future updates.
+          This is a placeholder for the ForgotPassword screen. The full implementation will come in future updates.
         </Text>
-        <Button
-          title="Go back to Login"
-          onPress={() => navigation.navigate('Login')}
-          style={styles.button}
-        />
       </View>
     </SafeAreaView>
   );
@@ -51,9 +41,6 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     textAlign: 'center',
     marginBottom: SPACING.xl,
-  },
-  button: {
-    minWidth: 200,
   },
 });
 

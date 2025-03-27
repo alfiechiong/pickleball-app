@@ -4,6 +4,9 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { ActivityIndicator, View } from 'react-native';
+import { useAuth } from '../contexts/AuthContext';
+import LogoutButton from '../components/LogoutButton';
 
 // Import types
 import {
@@ -96,12 +99,16 @@ const MainNavigator = () => {
         headerTitleStyle: {
           fontWeight: 'bold',
         },
+        headerRight: () => <LogoutButton />,
       }}
     >
       <MainStack.Screen
         name="BottomTabs"
         component={BottomTabNavigator}
-        options={{ headerShown: false }}
+        options={{
+          headerShown: true,
+          title: 'Pickleball',
+        }}
       />
       <MainStack.Screen
         name="GameDetails"
@@ -132,16 +139,26 @@ const MainNavigator = () => {
   );
 };
 
+// Loading Screen
+const LoadingScreen = () => (
+  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+    <ActivityIndicator size="large" color={COLORS.primary} />
+  </View>
+);
+
 // App Navigator
 const AppNavigator = () => {
-  // This would typically come from your auth context or state management
-  const isLoggedIn = true; // Changed to true for testing purposes
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return <LoadingScreen />;
+  }
 
   return (
     <SafeAreaProvider>
       <NavigationContainer>
         <RootStack.Navigator screenOptions={{ headerShown: false }}>
-          {isLoggedIn ? (
+          {isAuthenticated ? (
             <RootStack.Screen name="Main" component={MainNavigator} />
           ) : (
             <RootStack.Screen name="Auth" component={AuthNavigator} />
