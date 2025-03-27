@@ -2,9 +2,6 @@ import jwt from 'jsonwebtoken';
 import { User } from '../models';
 import config from '../config';
 
-// Import SignOptions
-import { SignOptions } from 'jsonwebtoken';
-
 // Define token payload interface
 interface TokenPayload {
   id: string;
@@ -30,11 +27,14 @@ export const generateToken = (user: User, type: TokenType = 'access'): string =>
     email: user.email,
   };
 
+  // Get the appropriate secret and expiration based on token type
   const secret = type === 'access' ? config.jwt.secret : config.jwt.refreshSecret;
   const expiresIn = type === 'access' ? config.jwt.expiresIn : config.jwt.refreshExpiresIn;
 
-  // Use 'any' type to bypass TypeScript errors due to jsonwebtoken typing issues
-  return jwt.sign(payload, secret as any, { expiresIn });
+  // Convert expiresIn to a type compatible with the jwt.sign function if needed
+  // We're intentionally using type assertion here because we know the config values are valid
+  // This handles the TypeScript error with jsonwebtoken's typing
+  return jwt.sign(payload, secret, { expiresIn } as jwt.SignOptions);
 };
 
 /**
@@ -45,7 +45,7 @@ export const generateAuthTokens = async (user: User): Promise<TokenResponse> => 
   const refreshToken = generateToken(user, 'refresh');
 
   // Update user's refresh token in the database
-  await user.update({ refreshToken });
+  await user.update({ refresh_token: refreshToken });
 
   return {
     accessToken,
@@ -59,7 +59,7 @@ export const generateAuthTokens = async (user: User): Promise<TokenResponse> => 
  */
 export const verifyToken = (token: string, type: TokenType = 'access'): TokenPayload => {
   const secret = type === 'access' ? config.jwt.secret : config.jwt.refreshSecret;
-  return jwt.verify(token, secret as jwt.Secret) as TokenPayload;
+  return jwt.verify(token, secret) as TokenPayload;
 };
 
 /**
@@ -73,7 +73,7 @@ export const refreshAccessToken = async (refreshToken: string): Promise<TokenRes
     // Find the user by ID and check if the refresh token matches
     const user = await User.findByPk(payload.id);
 
-    if (!user || user.refreshToken !== refreshToken) {
+    if (!user || user.refresh_token !== refreshToken) {
       return null;
     }
 
@@ -90,6 +90,6 @@ export const refreshAccessToken = async (refreshToken: string): Promise<TokenRes
 export const invalidateRefreshToken = async (userId: string): Promise<void> => {
   const user = await User.findByPk(userId);
   if (user) {
-    await user.update({ refreshToken: '' });
+    await user.update({ refresh_token: '' });
   }
 };

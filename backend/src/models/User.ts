@@ -1,103 +1,106 @@
-import { Model, DataTypes, Optional, Sequelize } from 'sequelize';
+import { Model, DataTypes, Optional } from 'sequelize';
 import bcrypt from 'bcrypt';
+import { sequelize } from './index';
 
-// User attributes interface
-export interface UserAttributes {
+// These are all the attributes in the User model
+interface UserAttributes {
   id: string;
   name: string;
   email: string;
   password: string;
-  profilePicture?: string;
-  skillLevel?: 'beginner' | 'intermediate' | 'advanced' | 'pro';
-  refreshToken?: string;
+  skill_level: string;
+  profile_picture?: string | null;
+  refresh_token?: string | null;
   createdAt?: Date;
   updatedAt?: Date;
   deletedAt?: Date;
 }
 
-// Interface for User creation attributes - optional fields for create
-export interface UserCreationAttributes
-  extends Optional<UserAttributes, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'> {}
+// Some attributes are optional in `User.build` and `User.create` calls
+interface UserCreationAttributes extends Optional<UserAttributes, 'id'> {}
 
-// Define the User model
-export class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {
+class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {
   public id!: string;
   public name!: string;
   public email!: string;
   public password!: string;
-  public profilePicture?: string;
-  public skillLevel?: 'beginner' | 'intermediate' | 'advanced' | 'pro';
-  public refreshToken?: string;
+  public skill_level!: string;
+  public profile_picture?: string | null;
+  public refresh_token?: string | null;
 
-  // Timestamps
+  // timestamps!
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
   public readonly deletedAt?: Date;
 
-  // Password validation helper
+  // This method will compare the given password with the hashed password in the database
   public async comparePassword(candidatePassword: string): Promise<boolean> {
     return bcrypt.compare(candidatePassword, this.password);
   }
 }
 
-export default function (sequelize: Sequelize): typeof User {
-  User.init(
-    {
-      id: {
-        type: DataTypes.UUID,
-        defaultValue: DataTypes.UUIDV4,
-        primaryKey: true,
-      },
-      name: {
-        type: DataTypes.STRING,
-        allowNull: false,
-      },
-      email: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        unique: true,
-        validate: {
-          isEmail: true,
-        },
-      },
-      password: {
-        type: DataTypes.STRING,
-        allowNull: false,
-      },
-      profilePicture: {
-        type: DataTypes.STRING,
-        allowNull: true,
-      },
-      skillLevel: {
-        type: DataTypes.ENUM('beginner', 'intermediate', 'advanced', 'pro'),
-        allowNull: true,
-      },
-      refreshToken: {
-        type: DataTypes.TEXT,
-        allowNull: true,
+User.init(
+  {
+    id: {
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
+      primaryKey: true,
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    email: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
+    },
+    password: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    skill_level: {
+      type: DataTypes.ENUM('beginner', 'intermediate', 'advanced', 'pro'),
+      allowNull: false,
+      defaultValue: 'intermediate',
+    },
+    profile_picture: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    refresh_token: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+    },
+    deletedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+  },
+  {
+    sequelize,
+    modelName: 'User',
+    tableName: 'users',
+    paranoid: true, // This enables soft delete
+    underscored: true, // Use snake_case for column names
+    hooks: {
+      beforeSave: async (user: User) => {
+        if (user.changed('password')) {
+          const salt = await bcrypt.genSalt(10);
+          user.password = await bcrypt.hash(user.password, salt);
+        }
       },
     },
-    {
-      sequelize,
-      modelName: 'User',
-      tableName: 'users',
-      paranoid: true, // Enable soft deletes
-      hooks: {
-        beforeCreate: async (user: User) => {
-          if (user.password) {
-            const salt = await bcrypt.genSalt(10);
-            user.password = await bcrypt.hash(user.password, salt);
-          }
-        },
-        beforeUpdate: async (user: User) => {
-          if (user.changed('password')) {
-            const salt = await bcrypt.genSalt(10);
-            user.password = await bcrypt.hash(user.password, salt);
-          }
-        },
-      },
-    }
-  );
+  }
+);
 
-  return User;
-}
+export { User, UserAttributes, UserCreationAttributes };
+export default User;

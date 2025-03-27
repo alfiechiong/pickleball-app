@@ -1,162 +1,271 @@
-# Pickleball App Backend
+# Pickleball App Backend Service
 
-The backend API for the Pickleball mobile application built with Node.js, Express, PostgreSQL, and TypeScript.
+This is the backend service for the Pickleball App, built with Node.js, Express, TypeScript, and PostgreSQL.
 
-## Features
+## Table of Contents
 
-- User authentication (register, login, logout) with JWT
-- User profile management
-- Game creation and management
-- Tournament organization
-- RESTful API design
-- PostgreSQL database with Sequelize ORM
-- Unit and integration testing
+- [Prerequisites](#prerequisites)
+- [Getting Started](#getting-started)
+- [Project Structure](#project-structure)
+- [Database](#database)
+- [Authentication](#authentication)
+- [API Documentation](#api-documentation)
+- [Environment Variables](#environment-variables)
 
 ## Prerequisites
 
-- Node.js 16+ and npm
-- PostgreSQL 14+
+- Node.js (v20.x or later)
+- PostgreSQL (v14.x or later)
+- npm (v9.x or later)
 
 ## Getting Started
 
-### Environment Setup
-
-1. Clone the repository
-2. Navigate to the backend directory: `cd backend`
-3. Install dependencies: `npm install`
-4. Copy the example environment file: `cp .env.example .env`
-5. Edit the `.env` file with your database credentials and other configurations
-
-### Database Setup
-
-1. Create development and test databases:
+1. Clone the repository:
 
 ```bash
-createdb pickleball_dev
-createdb pickleball_test
+git clone <repository-url>
+cd pickleball-app/backend
 ```
 
-2. Run database migrations:
+2. Install dependencies:
 
 ```bash
-npm run db:migrate
+npm install
 ```
 
-3. (Optional) Seed the database with sample data:
+3. Set up environment variables:
 
 ```bash
-npm run db:seed
+# Create environment files for different environments
+cp .env.example .env.development
+cp .env.example .env.test
+cp .env.example .env.production
 ```
 
-### Running the Server
+4. Update the environment variables in the respective files with your configuration.
 
-Start the development server:
+5. Set up the database:
+
+```bash
+# Create database and run migrations
+npm run db:setup
+
+# For development environment specifically
+NODE_ENV=development npm run db:setup
+```
+
+6. Start the development server:
 
 ```bash
 npm run dev
 ```
 
-The server will be running at http://localhost:3000 (or another port if specified in the .env file).
-
-### Building for Production
-
-```bash
-npm run build
-npm start
-```
-
 ## Project Structure
 
 ```
-src/
-├── config/         # Configuration files
-├── controllers/    # Route controllers
-├── middlewares/    # Express middlewares
-├── models/         # Sequelize models
-├── routes/         # API routes
-├── services/       # Business logic
-├── utils/          # Utility functions
-├── tests/          # Test files
-├── migrations/     # Database migrations
-├── seeders/        # Database seeders
-└── index.ts        # Application entry point
+backend/
+├── src/
+│   ├── config/           # Configuration files
+│   ├── controllers/      # Request handlers
+│   ├── database/         # Database migrations and seeders
+│   ├── middlewares/      # Express middlewares
+│   ├── models/          # Sequelize models
+│   ├── routes/          # Express routes
+│   ├── services/        # Business logic
+│   ├── types/           # TypeScript type definitions
+│   └── utils/           # Utility functions
+├── .env.example         # Example environment variables
+├── .sequelizerc         # Sequelize CLI configuration
+└── package.json
 ```
 
-## API Endpoints
+## Database
 
-### Authentication
+### Models
 
-- `POST /api/v1/auth/register` - Register a new user
-- `POST /api/v1/auth/login` - Login
-- `POST /api/v1/auth/refresh-token` - Refresh access token
-- `POST /api/v1/auth/logout` - Logout
-- `GET /api/v1/auth/me` - Get current user profile
+#### User Model
 
-### Users
+- `id`: UUID (Primary Key)
+- `name`: String
+- `email`: String (Unique)
+- `password`: String (Hashed)
+- `skill_level`: Enum ('beginner', 'intermediate', 'advanced', 'pro')
+- `profile_picture`: String (Optional)
+- `refresh_token`: Text (Optional)
+- Timestamps: `created_at`, `updated_at`, `deleted_at`
 
-- `GET /api/v1/users` - Get all users
-- `GET /api/v1/users/:id` - Get user by ID
-- `PUT /api/v1/users/:id` - Update user
-- `DELETE /api/v1/users/:id` - Delete user
+### Migration Process
 
-### Games
-
-- `GET /api/v1/games` - Get all games
-- `POST /api/v1/games` - Create a new game
-- `GET /api/v1/games/:id` - Get game by ID
-- `PUT /api/v1/games/:id` - Update game
-- `DELETE /api/v1/games/:id` - Delete game
-
-### Tournaments
-
-- `GET /api/v1/tournaments` - Get all tournaments
-- `POST /api/v1/tournaments` - Create a new tournament
-- `GET /api/v1/tournaments/:id` - Get tournament by ID
-- `PUT /api/v1/tournaments/:id` - Update tournament
-- `DELETE /api/v1/tournaments/:id` - Delete tournament
-- `POST /api/v1/tournaments/:id/register` - Register for a tournament
-- `GET /api/v1/tournaments/:id/players` - Get tournament players
-
-## Testing
-
-This project uses Jest for testing. There are two types of tests:
-
-1. **Unit Tests**: Test individual services and functions in isolation
-2. **Integration Tests**: Test API endpoints with mocked database connections
-
-### Running Tests
+1. Create a new migration:
 
 ```bash
-# Run all tests
-npm test
-
-# Run only unit tests
-npm run test:unit
-
-# Run only integration tests
-npm run test:integration
-
-# Generate test coverage report
-npm run test:coverage
+npm run migration:create -- --name your-migration-name
 ```
 
-### Test Coverage
+2. Run migrations:
 
-The authentication service and endpoints have comprehensive test coverage:
+```bash
+# Development environment
+npm run db:migrate
 
-- Unit tests for the authentication service cover all critical functions like token generation, verification, and refresh.
-- Integration tests for the authentication endpoints ensure correct behavior for registration, login, token refresh, user profile, and logout.
+# Test environment
+NODE_ENV=test npm run db:migrate
 
-### Adding New Tests
+# Production environment
+NODE_ENV=production npm run db:migrate
+```
 
-When adding new tests:
+3. Rollback migrations:
 
-1. For unit tests, place them in the `src/tests/unit` directory
-2. For integration tests, place them in the `src/tests/integration` directory
-3. Use the naming convention `*.test.ts` for test files
-4. Mock external dependencies to ensure isolated testing
-5. Use Jest's assertion functions to verify expected behavior
+```bash
+# Last migration
+npm run db:rollback
 
-## License
+# All migrations
+npm run db:rollback:all
+```
 
-[ISC](LICENSE)
+4. Check migration status:
+
+```bash
+npm run db:status
+```
+
+## Authentication
+
+The service uses JWT (JSON Web Tokens) for authentication with the following features:
+
+- Access Token and Refresh Token strategy
+- Password hashing using bcrypt
+- Token-based authentication using Passport-JWT
+
+### Authentication Flow
+
+1. **Registration** (`POST /api/v1/auth/register`):
+
+   - Creates a new user account
+   - Returns access token and refresh token
+
+2. **Login** (`POST /api/v1/auth/login`):
+
+   - Authenticates user credentials
+   - Returns access token and refresh token
+
+3. **Token Refresh** (`POST /api/v1/auth/refresh-token`):
+
+   - Refreshes expired access token using refresh token
+   - Returns new access token
+
+4. **Logout** (`POST /api/v1/auth/logout`):
+
+   - Invalidates refresh token
+   - Requires authentication
+
+5. **Get Current User** (`GET /api/v1/auth/me`):
+   - Returns authenticated user's information
+   - Requires authentication
+
+## API Documentation
+
+### Authentication Endpoints
+
+#### Register User
+
+```http
+POST /api/v1/auth/register
+Content-Type: application/json
+
+{
+  "name": "string",
+  "email": "string",
+  "password": "string",
+  "skill_level": "beginner" | "intermediate" | "advanced" | "pro"
+}
+```
+
+#### Login User
+
+```http
+POST /api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "string",
+  "password": "string"
+}
+```
+
+#### Refresh Token
+
+```http
+POST /api/v1/auth/refresh-token
+Content-Type: application/json
+
+{
+  "refreshToken": "string"
+}
+```
+
+#### Logout User
+
+```http
+POST /api/v1/auth/logout
+Authorization: Bearer <access_token>
+```
+
+#### Get Current User
+
+```http
+GET /api/v1/auth/me
+Authorization: Bearer <access_token>
+```
+
+## Environment Variables
+
+```env
+# Server Configuration
+NODE_ENV=development
+PORT=3000
+API_URL=http://localhost:3000
+FRONTEND_URL=http://localhost:19006
+
+# Database Configuration
+DB_NAME=pickleball_dev
+DB_USER=postgres
+DB_PASSWORD=postgres
+DB_HOST=localhost
+DB_PORT=5432
+
+# JWT Configuration
+JWT_SECRET=your_jwt_secret_key_here
+JWT_EXPIRY=24h
+JWT_REFRESH_SECRET=your_refresh_token_secret_key_here
+JWT_REFRESH_EXPIRY=7d
+
+# CORS Configuration
+CORS_ORIGIN=http://localhost:19006
+
+# Logging Configuration
+LOG_LEVEL=debug
+```
+
+## Scripts
+
+```json
+{
+  "scripts": {
+    "dev": "nodemon -r dotenv/config src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test": "jest",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "db:migrate": "sequelize db:migrate",
+    "db:rollback": "sequelize db:migrate:undo",
+    "db:rollback:all": "sequelize db:migrate:undo:all",
+    "db:status": "sequelize db:migrate:status",
+    "db:setup": "sequelize db:create && sequelize db:migrate",
+    "db:reset": "sequelize db:drop && npm run db:setup"
+  }
+}
+```
