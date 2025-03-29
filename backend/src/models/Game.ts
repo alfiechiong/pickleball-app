@@ -42,6 +42,11 @@ class Game extends Model<GameAttributes, GameCreationAttributes> implements Game
   public readonly deleted_at?: Date;
 
   // You can also add custom instance methods here
+
+  // Associations
+  public readonly host?: User;
+  public readonly creator?: User;
+  public readonly participants?: any[]; // Will be populated with GameParticipant instances
 }
 
 Game.init(
@@ -120,6 +125,10 @@ Game.belongsTo(User, {
   foreignKey: 'creator_id',
   as: 'creator',
 });
+
+// Will be populated after GameParticipant model is loaded
+// This is imported by the GameParticipant model to avoid circular dependencies
+// GameParticipant.belongsTo(Game) handles the reverse relation
 
 export { Game, GameAttributes, GameCreationAttributes };
 export default Game;

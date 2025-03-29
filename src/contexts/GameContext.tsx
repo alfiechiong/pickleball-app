@@ -1,20 +1,31 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import * as gameService from '../services/gameService';
+import * as gameParticipantService from '../services/gameParticipantService';
 import { Game, CreateGameData, UpdateGameData, GameFilters } from '../services/gameService';
+import { GameParticipant } from '../services/gameParticipantService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface GameContextType {
   games: Game[];
   selectedGame: Game | null;
+  gameParticipants: GameParticipant[];
+  userGames: GameParticipant[];
   loading: boolean;
   error: string | null;
   loadGames: (filters?: GameFilters) => Promise<void>;
   loadGame: (gameId: string) => Promise<void>;
   createGame: (data: CreateGameData) => Promise<Game>;
   updateGame: (gameId: string, data: UpdateGameData) => Promise<void>;
-  joinGame: (gameId: string) => Promise<void>;
+  joinGame: (gameId: string) => Promise<GameParticipant>;
   leaveGame: (gameId: string) => Promise<void>;
   cancelGame: (gameId: string) => Promise<void>;
+  loadGameParticipants: (gameId: string) => Promise<void>;
+  loadUserGames: () => Promise<void>;
+  updateParticipantStatus: (
+    gameId: string,
+    participantId: string,
+    status: 'approved' | 'rejected'
+  ) => Promise<void>;
   clearError: () => void;
 }
 
@@ -31,6 +42,8 @@ export const useGame = () => {
 export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [games, setGames] = useState<Game[]>([]);
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
+  const [gameParticipants, setGameParticipants] = useState<GameParticipant[]>([]);
+  const [userGames, setUserGames] = useState<GameParticipant[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -111,11 +124,18 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setLoading(true);
       setError(null);
-      const updatedGame = await gameService.joinGame(gameId);
-      setGames(prevGames => prevGames.map(game => (game.id === gameId ? updatedGame : game)));
+
+      // New implementation using the participant service
+      const participant = await gameParticipantService.joinGame(gameId);
+
+      // Refresh the game data
       if (selectedGame?.id === gameId) {
-        setSelectedGame(updatedGame);
+        const game = await gameService.getGame(gameId);
+        setSelectedGame(game);
       }
+
+      // Return the participant data
+      return participant;
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to join game');
       throw error;
@@ -158,6 +178,61 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const loadGameParticipants = async (gameId: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const participants = await gameParticipantService.getGameParticipants(gameId);
+      setGameParticipants(participants);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to load game participants');
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadUserGames = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const userGamesList = await gameParticipantService.getUserGames();
+      setUserGames(userGamesList);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to load your games');
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateParticipantStatus = async (
+    gameId: string,
+    participantId: string,
+    status: 'approved' | 'rejected'
+  ) => {
+    try {
+      setLoading(true);
+      setError(null);
+      await gameParticipantService.updateParticipantStatus(gameId, participantId, status);
+
+      // Refresh participants list
+      const participants = await gameParticipantService.getGameParticipants(gameId);
+      setGameParticipants(participants);
+
+      // Refresh game data if it's the selected game
+      if (selectedGame?.id === gameId) {
+        const game = await gameService.getGame(gameId);
+        setSelectedGame(game);
+      }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to update participant status');
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const clearError = () => {
     setError(null);
   };
@@ -165,6 +240,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const value = {
     games,
     selectedGame,
+    gameParticipants,
+    userGames,
     loading,
     error,
     loadGames,
@@ -174,6 +251,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     joinGame,
     leaveGame,
     cancelGame,
+    loadGameParticipants,
+    loadUserGames,
+    updateParticipantStatus,
     clearError,
   };
 

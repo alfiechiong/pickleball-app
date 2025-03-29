@@ -15,14 +15,19 @@ import Button from '../../components/Button';
 import theme from '../../styles/theme';
 import { MainStackNavigationProp } from '../../navigation/types';
 import { useGame } from '../../contexts/GameContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { Game } from '../../services/gameService';
+import * as gameParticipantService from '../../services/gameParticipantService';
 
 const { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOW } = theme;
 
 const GamesScreen: React.FC = () => {
   const navigation = useNavigation<MainStackNavigationProp>();
   const { games, loading, error, loadGames } = useGame();
+  const { user } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
+  const [joiningGame, setJoiningGame] = useState<string | null>(null);
+  const [participations, setParticipations] = useState<{ [gameId: string]: string }>({});
 
   const fetchGames = useCallback(async () => {
     try {
@@ -33,36 +38,132 @@ const GamesScreen: React.FC = () => {
     }
   }, [loadGames]);
 
+  const fetchUserParticipations = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      const userGames = await gameParticipantService.getUserGames();
+      const participationMap: { [gameId: string]: string } = {};
+
+      userGames.forEach(participation => {
+        if (participation.game_id) {
+          participationMap[participation.game_id] = participation.status;
+        }
+      });
+
+      setParticipations(participationMap);
+    } catch (err) {
+      console.error('Error loading user participations:', err);
+    }
+  }, [user]);
+
   useEffect(() => {
     fetchGames();
-  }, [fetchGames]);
+    fetchUserParticipations();
+  }, [fetchGames, fetchUserParticipations]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchGames();
+    await Promise.all([fetchGames(), fetchUserParticipations()]);
     setRefreshing(false);
-  }, [fetchGames]);
+  }, [fetchGames, fetchUserParticipations]);
 
-  const renderGameItem = ({ item }: { item: Game }) => (
-    <TouchableOpacity
-      style={styles.gameCard}
-      onPress={() => navigation.navigate('GameDetails', { id: item.id })}
-    >
-      <Text style={styles.gameTitle}>{getGameName(item)}</Text>
-      <Text style={styles.gameDetails}>
-        {formatDate(item.date)} • {formatTime(item.start_time)} - {formatTime(item.end_time)}
-      </Text>
-      <Text style={styles.gameLocation}>{item.location}</Text>
-      <View style={styles.gameStats}>
-        <Text style={styles.statsText}>
-          Players: {item.current_players || 1}/{item.max_players}
+  const handleJoinGame = async (gameId: string) => {
+    try {
+      setJoiningGame(gameId);
+      await gameParticipantService.joinGame(gameId);
+      Alert.alert(
+        'Request Sent',
+        'Your request to join this game has been sent to the host for approval.'
+      );
+      await fetchUserParticipations();
+    } catch (error) {
+      Alert.alert(
+        'Failed to Join',
+        error instanceof Error ? error.message : 'Something went wrong'
+      );
+    } finally {
+      setJoiningGame(null);
+    }
+  };
+
+  const renderGameItem = ({ item }: { item: Game }) => {
+    const isCreator = item.creator_id === user?.id;
+    const participationStatus = participations[item.id];
+    const canJoin = !isCreator && item.status === 'open' && !participationStatus;
+    const isJoining = joiningGame === item.id;
+
+    return (
+      <TouchableOpacity
+        style={styles.gameCard}
+        onPress={() => navigation.navigate('GameDetails', { id: item.id })}
+      >
+        <Text style={styles.gameTitle}>{getGameName(item)}</Text>
+        <Text style={styles.gameDetails}>
+          {formatDate(item.date)} • {formatTime(item.start_time)} - {formatTime(item.end_time)}
         </Text>
-        <Text style={styles.levelBadge}>
-          {item.skill_level.charAt(0).toUpperCase() + item.skill_level.slice(1)}
-        </Text>
-      </View>
-    </TouchableOpacity>
-  );
+        <Text style={styles.gameLocation}>{item.location}</Text>
+        <View style={styles.gameStats}>
+          <Text style={styles.statsText}>
+            Players: {item.current_players || 1}/{item.max_players}
+          </Text>
+          <Text
+            style={[
+              styles.statusBadge,
+              item.status === 'open'
+                ? styles.openStatus
+                : item.status === 'full'
+                  ? styles.fullStatus
+                  : styles.cancelledStatus,
+            ]}
+          >
+            {item.status.toUpperCase()}
+          </Text>
+        </View>
+
+        <View style={styles.gameFooter}>
+          <Text style={styles.levelBadge}>
+            {item.skill_level.charAt(0).toUpperCase() + item.skill_level.slice(1)}
+          </Text>
+
+          {canJoin && (
+            <TouchableOpacity
+              style={styles.joinButton}
+              onPress={() => handleJoinGame(item.id)}
+              disabled={isJoining}
+            >
+              {isJoining ? (
+                <ActivityIndicator size="small" color={COLORS.white} />
+              ) : (
+                <Text style={styles.joinButtonText}>Join</Text>
+              )}
+            </TouchableOpacity>
+          )}
+
+          {participationStatus && (
+            <View
+              style={[
+                styles.participationBadge,
+                participationStatus === 'pending'
+                  ? styles.pendingBadge
+                  : participationStatus === 'approved'
+                    ? styles.approvedBadge
+                    : styles.rejectedBadge,
+              ]}
+            >
+              <Text style={styles.participationText}>{participationStatus.toUpperCase()}</Text>
+            </View>
+          )}
+
+          {isCreator && (
+            <View style={styles.creatorBadge}>
+              <Text style={styles.creatorText}>HOST</Text>
+            </View>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   // Helper function to generate a game name
   const getGameName = (game: Game) => {
@@ -246,15 +347,89 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.xs,
     color: COLORS.textSecondary,
   },
+  gameFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: SPACING.md,
+    paddingTop: SPACING.xs,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.lightGray,
+  },
   levelBadge: {
     fontSize: FONT_SIZES.xs,
-    backgroundColor: COLORS.primaryLight,
-    color: COLORS.primary,
-    paddingVertical: 2,
-    paddingHorizontal: 8,
+    color: COLORS.textPrimary,
+    backgroundColor: COLORS.backgroundLight,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs / 2,
     borderRadius: BORDER_RADIUS.sm,
     overflow: 'hidden',
-    fontWeight: '500',
+  },
+  joinButton: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    borderRadius: BORDER_RADIUS.sm,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minWidth: 60,
+  },
+  joinButtonText: {
+    color: COLORS.white,
+    fontSize: FONT_SIZES.xs,
+    fontWeight: 'bold',
+  },
+  statusBadge: {
+    fontSize: FONT_SIZES.xs,
+    fontWeight: 'bold',
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs / 2,
+    borderRadius: BORDER_RADIUS.sm,
+    overflow: 'hidden',
+  },
+  openStatus: {
+    backgroundColor: COLORS.success,
+    color: COLORS.white,
+  },
+  fullStatus: {
+    backgroundColor: COLORS.warning,
+    color: COLORS.white,
+  },
+  cancelledStatus: {
+    backgroundColor: COLORS.error,
+    color: COLORS.white,
+  },
+  participationBadge: {
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs / 2,
+    borderRadius: BORDER_RADIUS.sm,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  participationText: {
+    fontSize: FONT_SIZES.xs,
+    fontWeight: 'bold',
+    color: COLORS.white,
+  },
+  pendingBadge: {
+    backgroundColor: COLORS.warning,
+  },
+  approvedBadge: {
+    backgroundColor: COLORS.success,
+  },
+  rejectedBadge: {
+    backgroundColor: COLORS.error,
+  },
+  creatorBadge: {
+    backgroundColor: COLORS.secondary,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs / 2,
+    borderRadius: BORDER_RADIUS.sm,
+  },
+  creatorText: {
+    fontSize: FONT_SIZES.xs,
+    fontWeight: 'bold',
+    color: COLORS.white,
   },
   emptyContainer: {
     flex: 1,
@@ -272,10 +447,10 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.md,
     color: COLORS.textSecondary,
     textAlign: 'center',
-    marginBottom: SPACING.lg,
+    marginBottom: SPACING.xl,
   },
   createButton: {
-    width: '80%',
+    minWidth: 150,
   },
 });
 
