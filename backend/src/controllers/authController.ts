@@ -1,144 +1,119 @@
-import { Request, Response, NextFunction } from 'express';
-import createError from 'http-errors';
+import { Request, Response } from 'express';
 import { User } from '../models/User';
-import {
-  generateAuthTokens,
-  refreshAccessToken,
-  invalidateRefreshToken,
-} from '../services/authService';
-import logger from '../utils/logger';
-
-// Type for authenticated request
-type AuthenticatedRequest = Request & { user?: Express.User };
+import { generateToken } from '../utils/jwt';
+import { comparePasswords, hashPassword } from '../utils/password';
+import { generateRefreshToken } from '../utils/refreshToken';
+import createError from 'http-errors';
 
 /**
  * Register a new user
  */
-export const register = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const register = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, email, password, skillLevel: skill_level } = req.body;
+    const { email, password, name, skill_level } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
-      throw createError(409, 'Email already registered');
+      throw createError(400, 'User with this email already exists');
     }
 
-    // Create new user
+    // Hash password
+    const hashedPassword = await hashPassword(password);
+
+    // Create user
     const user = await User.create({
-      name,
       email,
-      password,
+      password: hashedPassword,
+      name,
       skill_level,
     });
 
     // Generate tokens
-    const tokens = await generateAuthTokens(user);
+    const token = generateToken(user);
+    const refreshToken = generateRefreshToken(user);
 
     res.status(201).json({
-      message: 'User registered successfully',
+      status: 'success',
       data: {
         user: {
           id: user.id,
-          name: user.name,
           email: user.email,
+          name: user.name,
           skill_level: user.skill_level,
         },
-        ...tokens,
+        token,
+        refreshToken,
       },
     });
-  } catch (error) {
-    logger.error('Registration error:', error);
-    next(error);
+  } catch (err: any) {
+    console.error('Error in register:', err);
+    res.status(err.status || 500).json({
+      status: 'error',
+      message: err.message || 'Error creating user',
+    });
   }
 };
 
 /**
  * Login user
  */
-export const login = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const login = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password } = req.body;
 
-    // Find user by email
+    // Find user
     const user = await User.findOne({ where: { email } });
     if (!user) {
-      throw createError(401, 'Invalid email or password');
+      throw createError(401, 'Invalid credentials');
     }
 
     // Verify password
-    const isValidPassword = await user.comparePassword(password);
-    if (!isValidPassword) {
-      throw createError(401, 'Invalid email or password');
+    const isPasswordValid = await comparePasswords(password, user.password);
+    if (!isPasswordValid) {
+      throw createError(401, 'Invalid credentials');
     }
 
     // Generate tokens
-    const tokens = await generateAuthTokens(user);
+    const token = generateToken(user);
+    const refreshToken = generateRefreshToken(user);
 
     res.json({
-      message: 'Login successful',
+      status: 'success',
       data: {
         user: {
           id: user.id,
-          name: user.name,
           email: user.email,
+          name: user.name,
           skill_level: user.skill_level,
         },
-        ...tokens,
+        token,
+        refreshToken,
       },
     });
-  } catch (error) {
-    logger.error('Login error:', error);
-    next(error);
-  }
-};
-
-/**
- * Refresh access token
- */
-export const refresh = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  try {
-    const { refreshToken } = req.body;
-
-    if (!refreshToken) {
-      throw createError(400, 'Refresh token is required');
-    }
-
-    const tokens = await refreshAccessToken(refreshToken);
-    if (!tokens) {
-      throw createError(401, 'Invalid refresh token');
-    }
-
-    res.json({
-      message: 'Token refreshed successfully',
-      data: tokens,
+  } catch (err: any) {
+    console.error('Error in login:', err);
+    res.status(err.status || 500).json({
+      status: 'error',
+      message: err.message || 'Error logging in',
     });
-  } catch (error) {
-    logger.error('Token refresh error:', error);
-    next(error);
   }
 };
 
 /**
  * Logout user
  */
-export const logout = async (req: Request, res: Response) => {
+export const logout = async (_req: Request, res: Response): Promise<void> => {
   try {
-    // Clear the refresh token in the database
-    await User.update({ refresh_token: null }, { where: { id: req.user!.id } });
-
-    // Clear cookies
-    res.clearCookie('refreshToken');
-    res.clearCookie('accessToken');
-
-    res.status(200).json({
+    res.json({
       status: 'success',
       message: 'Successfully logged out',
     });
-  } catch (error) {
-    res.status(500).json({
+  } catch (err: any) {
+    console.error('Error in logout:', err);
+    res.status(err.status || 500).json({
       status: 'error',
-      message: 'Error logging out',
+      message: err.message || 'Error logging out',
     });
   }
 };

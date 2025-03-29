@@ -49,6 +49,20 @@ const db = new Sequelize(dbConfig[env].database, dbConfig[env].username, dbConfi
   port: dbConfig[env].port,
   dialect: dbConfig[env].dialect,
   logging: dbConfig[env].logging,
+  define: {
+    timestamps: true,
+    underscored: true,
+    paranoid: true,
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
+    deletedAt: 'deleted_at',
+  },
+  pool: {
+    max: 5,
+    min: 0,
+    acquire: 30000,
+    idle: 10000,
+  },
 });
 
 export default db;

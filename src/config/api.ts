@@ -14,12 +14,19 @@ export const handleApiError = (error: any) => {
   if (error.response) {
     // The request was made and the server responded with a status code
     // that falls out of the range of 2xx
-    throw new Error(error.response.data.error?.message || 'An error occurred');
+    console.error('API Error Response:', {
+      status: error.response.status,
+      data: error.response.data,
+      headers: error.response.headers,
+    });
+    throw new Error(error.response.data.message || 'An error occurred');
   } else if (error.request) {
     // The request was made but no response was received
+    console.error('API No Response Error:', error.request);
     throw new Error('No response from server');
   } else {
     // Something happened in setting up the request that triggered an Error
+    console.error('API Setup Error:', error.message);
     throw new Error('Error setting up request');
   }
 };

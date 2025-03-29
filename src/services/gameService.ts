@@ -3,26 +3,28 @@ import { API_URL, getHeaders, handleApiError } from '../config/api';
 import { User } from './authService';
 
 export interface Game {
-  id: number;
-  date: string;
-  time: string;
+  id: string;
   location: string;
+  date: string;
+  start_time: string;
+  end_time: string;
   max_players: number;
-  current_players: number;
-  skill_level: string;
+  skill_level: 'beginner' | 'intermediate' | 'advanced' | 'pro';
   status: 'open' | 'full' | 'cancelled' | 'completed';
-  host: User;
-  players: User[];
+  creator_id: string;
+  notes?: string;
   created_at: string;
   updated_at: string;
 }
 
 export interface CreateGameData {
-  date: string;
-  time: string;
   location: string;
+  date: string;
+  start_time: string;
+  end_time: string;
   max_players: number;
-  skill_level: string;
+  skill_level: 'beginner' | 'intermediate' | 'advanced' | 'pro';
+  notes?: string;
 }
 
 export interface UpdateGameData {
@@ -41,13 +43,42 @@ export interface GameFilters {
   location?: string;
 }
 
-export const createGame = async (data: CreateGameData): Promise<Game> => {
+export const createGame = async (gameData: CreateGameData, token: string): Promise<Game> => {
   try {
-    const headers = await getHeaders();
-    const response = await axios.post(`${API_URL}/games`, data, { headers });
-    return response.data.data;
+    console.log('Creating game with data:', {
+      url: `${API_URL}/games`,
+      data: gameData,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const response = await axios.post(`${API_URL}/games`, gameData, {
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    console.log('Game creation response:', response.data);
+
+    if (response.data.status === 'error') {
+      throw new Error(response.data.message);
+    }
+
+    return response.data.data.game;
   } catch (error) {
-    handleApiError(error);
+    console.error('Game creation error:', error);
+    if (axios.isAxiosError(error)) {
+      const errorMessage = error.response?.data?.message || error.message;
+      console.error('Detailed error:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        headers: error.response?.headers,
+      });
+      throw new Error(errorMessage);
+    }
     throw error;
   }
 };

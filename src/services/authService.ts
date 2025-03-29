@@ -11,12 +11,12 @@ export interface User {
 }
 
 export interface AuthResponse {
-  message: string;
+  status: string;
+  message?: string;
   data: {
     user: User;
-    accessToken: string;
+    token: string;
     refreshToken: string;
-    expiresIn: string;
   };
 }
 
@@ -25,18 +25,38 @@ export interface LoginCredentials {
   password: string;
 }
 
-export interface RegisterData extends LoginCredentials {
+export interface RegisterData {
   name: string;
-  skill_level: 'beginner' | 'intermediate' | 'advanced' | 'pro';
+  email: string;
+  password: string;
+  skillLevel: string;
 }
 
 export const register = async (data: RegisterData): Promise<AuthResponse> => {
   try {
-    const response = await axios.post(`${API_URL}/auth/register`, data);
-    await AsyncStorage.setItem('accessToken', response.data.data.accessToken);
-    await AsyncStorage.setItem('refreshToken', response.data.data.refreshToken);
+    console.log('Registering with data:', data);
+    // Transform data to match backend expectations
+    const backendData = {
+      name: data.name,
+      email: data.email,
+      password: data.password,
+      skill_level: data.skillLevel, // Transform to snake_case for backend
+    };
+
+    const response = await axios.post(`${API_URL}/auth/register`, backendData);
+    console.log('Registration response:', response.data);
+
+    if (response.data.data.token) {
+      await AsyncStorage.setItem('accessToken', response.data.data.token);
+    }
+
+    if (response.data.data.refreshToken) {
+      await AsyncStorage.setItem('refreshToken', response.data.data.refreshToken);
+    }
+
     return response.data;
   } catch (error) {
+    console.error('Registration error:', error);
     handleApiError(error);
     throw error;
   }
@@ -44,11 +64,21 @@ export const register = async (data: RegisterData): Promise<AuthResponse> => {
 
 export const login = async (credentials: LoginCredentials): Promise<AuthResponse> => {
   try {
+    console.log('Logging in with credentials:', { email: credentials.email });
     const response = await axios.post(`${API_URL}/auth/login`, credentials);
-    await AsyncStorage.setItem('accessToken', response.data.data.accessToken);
-    await AsyncStorage.setItem('refreshToken', response.data.data.refreshToken);
+    console.log('Login response:', response.data);
+
+    if (response.data.data.token) {
+      await AsyncStorage.setItem('accessToken', response.data.data.token);
+    }
+
+    if (response.data.data.refreshToken) {
+      await AsyncStorage.setItem('refreshToken', response.data.data.refreshToken);
+    }
+
     return response.data;
   } catch (error) {
+    console.error('Login error:', error);
     handleApiError(error);
     throw error;
   }
@@ -85,8 +115,15 @@ export const refreshToken = async (): Promise<AuthResponse> => {
     }
 
     const response = await axios.post(`${API_URL}/auth/refresh-token`, { refreshToken });
-    await AsyncStorage.setItem('accessToken', response.data.data.accessToken);
-    await AsyncStorage.setItem('refreshToken', response.data.data.refreshToken);
+
+    if (response.data.data.token) {
+      await AsyncStorage.setItem('accessToken', response.data.data.token);
+    }
+
+    if (response.data.data.refreshToken) {
+      await AsyncStorage.setItem('refreshToken', response.data.data.refreshToken);
+    }
+
     return response.data;
   } catch (error) {
     handleApiError(error);

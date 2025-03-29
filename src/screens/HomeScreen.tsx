@@ -46,7 +46,7 @@ const HomeScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
@@ -162,6 +162,7 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: BORDER_RADIUS.xl,
     borderBottomRightRadius: BORDER_RADIUS.xl,
     ...SHADOW.medium,
+    marginTop: -1,
   },
   welcomeText: {
     fontSize: FONT_SIZES.lg,

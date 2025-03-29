@@ -55,8 +55,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setError(null);
       const response = await authService.login(credentials);
       setUser(response.data.user);
-      setToken(response.data.accessToken);
-      await AsyncStorage.setItem('accessToken', response.data.accessToken);
+      setToken(response.data.token);
+      await AsyncStorage.setItem('accessToken', response.data.token);
     } catch (error) {
       setError(error instanceof Error ? error.message : 'An error occurred during login');
       throw error;
@@ -68,8 +68,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setError(null);
       const response = await authService.register(data);
       setUser(response.data.user);
-      setToken(response.data.accessToken);
-      await AsyncStorage.setItem('accessToken', response.data.accessToken);
+      setToken(response.data.token);
+      await AsyncStorage.setItem('accessToken', response.data.token);
     } catch (error) {
       setError(error instanceof Error ? error.message : 'An error occurred during registration');
       throw error;

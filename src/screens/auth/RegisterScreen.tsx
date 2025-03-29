@@ -29,7 +29,7 @@ interface FormData {
   name: string;
   email: string;
   password: string;
-  skill_level: SkillLevel;
+  skillLevel: SkillLevel;
 }
 
 // Form validation schema
@@ -40,7 +40,7 @@ const registerSchema = yup.object().shape({
     .string()
     .min(8, 'Password must be at least 8 characters')
     .required('Password is required'),
-  skill_level: yup
+  skillLevel: yup
     .mixed<SkillLevel>()
     .oneOf(['beginner', 'intermediate', 'advanced', 'pro'] as const, 'Please select a skill level')
     .required('Skill level is required'),
@@ -62,23 +62,31 @@ const RegisterScreen: React.FC = () => {
     control,
     handleSubmit,
     formState: { errors },
+    setValue,
   } = useForm<FormData>({
     resolver: yupResolver(registerSchema),
     defaultValues: {
       name: '',
       email: '',
       password: '',
-      skill_level: 'beginner',
+      skillLevel: 'beginner',
     },
   });
 
   const onSubmit = async (data: FormData) => {
     try {
       clearError();
+      console.log('Form data:', data); // Debug log
       await register(data);
     } catch (err) {
+      console.error('Registration error:', err); // Debug log
       Alert.alert('Registration Failed', error || 'An error occurred while registering');
     }
+  };
+
+  const getSkillLevelLabel = (value: SkillLevel): string => {
+    const level = skillLevels.find(item => item.value === value);
+    return level ? level.label : 'Select skill level';
   };
 
   return (
@@ -154,23 +162,58 @@ const RegisterScreen: React.FC = () => {
               <Text style={styles.label}>Skill Level</Text>
               <Controller
                 control={control}
-                name="skill_level"
+                name="skillLevel"
                 render={({ field: { onChange, value } }) => (
-                  <View style={styles.pickerContainer}>
-                    <Picker
-                      selectedValue={value}
-                      onValueChange={(itemValue: SkillLevel) => onChange(itemValue)}
-                      style={styles.picker}
-                    >
-                      {skillLevels.slice(1).map(level => (
-                        <Picker.Item key={level.value} label={level.label} value={level.value} />
-                      ))}
-                    </Picker>
-                  </View>
+                  <>
+                    {Platform.OS === 'ios' ? (
+                      <TouchableOpacity
+                        style={styles.pickerButton}
+                        onPress={() => {
+                          Alert.alert(
+                            'Select Skill Level',
+                            '',
+                            skillLevels
+                              .filter(level => level.value !== '') // Remove the placeholder
+                              .map(level => ({
+                                text: level.label,
+                                onPress: () => {
+                                  onChange(level.value);
+                                  setValue('skillLevel', level.value as SkillLevel);
+                                },
+                              })),
+                            { cancelable: true }
+                          );
+                        }}
+                      >
+                        <Text style={styles.pickerButtonText}>{getSkillLevelLabel(value)}</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <View style={styles.pickerContainer}>
+                        <Picker
+                          selectedValue={value}
+                          onValueChange={(itemValue: SkillLevel) => onChange(itemValue)}
+                          style={styles.picker}
+                          dropdownIconColor={COLORS.textPrimary}
+                          mode="dropdown"
+                        >
+                          {skillLevels
+                            .filter(level => level.value !== '') // Remove the placeholder
+                            .map(level => (
+                              <Picker.Item
+                                key={level.value}
+                                label={level.label}
+                                value={level.value}
+                                color={COLORS.textPrimary}
+                              />
+                            ))}
+                        </Picker>
+                      </View>
+                    )}
+                  </>
                 )}
               />
-              {errors.skill_level && (
-                <Text style={styles.errorText}>{errors.skill_level.message}</Text>
+              {errors.skillLevel && (
+                <Text style={styles.errorText}>{errors.skillLevel.message}</Text>
               )}
             </View>
 
@@ -254,9 +297,30 @@ const styles = StyleSheet.create({
     borderColor: COLORS.lightGray,
     borderRadius: BORDER_RADIUS.sm,
     backgroundColor: COLORS.white,
+    overflow: 'hidden',
+    justifyContent: 'center',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 1,
   },
   picker: {
     height: 50,
+    width: '100%',
+  },
+  pickerButton: {
+    height: 50,
+    borderWidth: 1,
+    borderColor: COLORS.lightGray,
+    borderRadius: BORDER_RADIUS.sm,
+    backgroundColor: COLORS.white,
+    justifyContent: 'center',
+    paddingHorizontal: SPACING.md,
+  },
+  pickerButtonText: {
+    fontSize: FONT_SIZES.md,
+    color: COLORS.textPrimary,
   },
   errorText: {
     color: COLORS.error,

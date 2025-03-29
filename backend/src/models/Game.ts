@@ -1,43 +1,43 @@
 import { Model, DataTypes, Optional } from 'sequelize';
-import sequelize from '../config/database';
+import { sequelize } from './index';
 import { User } from './User';
 
+// These are all the attributes in the Game model
 interface GameAttributes {
   id: string;
-  location: string;
   date: Date;
   start_time: Date;
   end_time: Date;
+  location: string;
   max_players: number;
-  skill_level: 'beginner' | 'intermediate' | 'advanced' | 'pro';
+  skill_level: string;
   status: 'open' | 'full' | 'cancelled' | 'completed';
-  creator_id: string;
-  notes?: string;
-  created_at: Date;
-  updated_at: Date;
+  host_id: string;
+  created_at?: Date;
+  updated_at?: Date;
   deleted_at?: Date;
 }
 
-interface GameCreationAttributes
-  extends Optional<GameAttributes, 'id' | 'created_at' | 'updated_at' | 'deleted_at' | 'notes'> {}
+// Some attributes are optional in `Game.build` and `Game.create` calls
+interface GameCreationAttributes extends Optional<GameAttributes, 'id'> {}
 
-export class Game extends Model<GameAttributes, GameCreationAttributes> implements GameAttributes {
+class Game extends Model<GameAttributes, GameCreationAttributes> implements GameAttributes {
   public id!: string;
-  public location!: string;
   public date!: Date;
   public start_time!: Date;
   public end_time!: Date;
+  public location!: string;
   public max_players!: number;
-  public skill_level!: 'beginner' | 'intermediate' | 'advanced' | 'pro';
+  public skill_level!: string;
   public status!: 'open' | 'full' | 'cancelled' | 'completed';
-  public creator_id!: string;
-  public notes?: string;
-  public created_at!: Date;
-  public updated_at!: Date;
-  public deleted_at?: Date;
+  public host_id!: string;
 
-  // Associations
-  public readonly creator?: User;
+  // timestamps!
+  public readonly created_at!: Date;
+  public readonly updated_at!: Date;
+  public readonly deleted_at?: Date;
+
+  // You can also add custom instance methods here
 }
 
 Game.init(
@@ -47,12 +47,8 @@ Game.init(
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
-    location: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
     date: {
-      type: DataTypes.DATE,
+      type: DataTypes.DATEONLY,
       allowNull: false,
     },
     start_time: {
@@ -61,6 +57,10 @@ Game.init(
     },
     end_time: {
       type: DataTypes.TIME,
+      allowNull: false,
+    },
+    location: {
+      type: DataTypes.STRING,
       allowNull: false,
     },
     max_players: {
@@ -78,41 +78,27 @@ Game.init(
       allowNull: false,
       defaultValue: 'open',
     },
-    creator_id: {
+    host_id: {
       type: DataTypes.UUID,
       allowNull: false,
-    },
-    notes: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-    },
-    created_at: {
-      type: DataTypes.DATE,
-      allowNull: false,
-    },
-    updated_at: {
-      type: DataTypes.DATE,
-      allowNull: false,
-    },
-    deleted_at: {
-      type: DataTypes.DATE,
-      allowNull: true,
+      references: {
+        model: 'users',
+        key: 'id',
+      },
     },
   },
   {
     sequelize,
     modelName: 'Game',
     tableName: 'games',
-    timestamps: true,
-    paranoid: true,
-    underscored: true,
   }
 );
 
 // Define associations
 Game.belongsTo(User, {
-  foreignKey: 'creator_id',
-  as: 'creator',
+  foreignKey: 'host_id',
+  as: 'host',
 });
 
+export { Game, GameAttributes, GameCreationAttributes };
 export default Game;

@@ -11,9 +11,9 @@ interface UserAttributes {
   skill_level: string;
   profile_picture?: string | null;
   refresh_token?: string | null;
-  createdAt?: Date;
-  updatedAt?: Date;
-  deletedAt?: Date;
+  created_at?: Date;
+  updated_at?: Date;
+  deleted_at?: Date;
 }
 
 // Some attributes are optional in `User.build` and `User.create` calls
@@ -29,9 +29,9 @@ class User extends Model<UserAttributes, UserCreationAttributes> implements User
   public refresh_token?: string | null;
 
   // timestamps!
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
-  public readonly deletedAt?: Date;
+  public readonly created_at!: Date;
+  public readonly updated_at!: Date;
+  public readonly deleted_at?: Date;
 
   // This method will compare the given password with the hashed password in the database
   public async comparePassword(candidatePassword: string): Promise<boolean> {
@@ -72,25 +72,17 @@ User.init(
       type: DataTypes.TEXT,
       allowNull: true,
     },
-    createdAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-    },
-    updatedAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-    },
-    deletedAt: {
-      type: DataTypes.DATE,
-      allowNull: true,
-    },
   },
   {
     sequelize,
     modelName: 'User',
     tableName: 'users',
-    paranoid: true, // This enables soft delete
-    underscored: true, // Use snake_case for column names
+    paranoid: true,
+    underscored: true,
+    timestamps: true,
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
+    deletedAt: 'deleted_at',
     hooks: {
       beforeSave: async (user: User) => {
         if (user.changed('password')) {

@@ -1,6 +1,8 @@
+import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { User } from '../models';
+import { User } from '../models/User';
 import config from '../config';
+import logger from '../utils/logger';
 
 // Define token payload interface
 interface TokenPayload {
@@ -19,6 +21,14 @@ export interface TokenResponse {
 }
 
 /**
+ * Hash a password
+ */
+export const hashPassword = async (password: string): Promise<string> => {
+  const salt = await bcrypt.genSalt(10);
+  return bcrypt.hash(password, salt);
+};
+
+/**
  * Generate JWT token for a user
  */
 export const generateToken = (user: User, type: TokenType = 'access'): string => {
@@ -31,6 +41,8 @@ export const generateToken = (user: User, type: TokenType = 'access'): string =>
   const secret = type === 'access' ? config.jwt.secret : config.jwt.refreshSecret;
   const expiresIn = type === 'access' ? config.jwt.expiresIn : config.jwt.refreshExpiresIn;
 
+  logger.debug(`Generating ${type} token for user ${user.id}`);
+
   // Convert expiresIn to a type compatible with the jwt.sign function if needed
   // We're intentionally using type assertion here because we know the config values are valid
   // This handles the TypeScript error with jsonwebtoken's typing
@@ -41,6 +53,8 @@ export const generateToken = (user: User, type: TokenType = 'access'): string =>
  * Generate access and refresh tokens for a user
  */
 export const generateAuthTokens = async (user: User): Promise<TokenResponse> => {
+  logger.info(`Generating auth tokens for user ${user.id}`);
+
   const accessToken = generateToken(user, 'access');
   const refreshToken = generateToken(user, 'refresh');
 
@@ -59,7 +73,14 @@ export const generateAuthTokens = async (user: User): Promise<TokenResponse> => 
  */
 export const verifyToken = (token: string, type: TokenType = 'access'): TokenPayload => {
   const secret = type === 'access' ? config.jwt.secret : config.jwt.refreshSecret;
-  return jwt.verify(token, secret) as TokenPayload;
+
+  try {
+    logger.debug(`Verifying ${type} token`);
+    return jwt.verify(token, secret) as TokenPayload;
+  } catch (error) {
+    logger.error(`Error verifying ${type} token:`, error);
+    throw error;
+  }
 };
 
 /**
@@ -74,12 +95,15 @@ export const refreshAccessToken = async (refreshToken: string): Promise<TokenRes
     const user = await User.findByPk(payload.id);
 
     if (!user || user.refresh_token !== refreshToken) {
+      logger.warn(`Invalid refresh token attempt for user ID ${payload.id}`);
       return null;
     }
 
+    logger.info(`Refreshing access token for user ${user.id}`);
     // Generate new tokens
     return generateAuthTokens(user);
   } catch (error) {
+    logger.error('Error refreshing access token:', error);
     return null;
   }
 };
@@ -88,8 +112,11 @@ export const refreshAccessToken = async (refreshToken: string): Promise<TokenRes
  * Invalidate a user's refresh token
  */
 export const invalidateRefreshToken = async (userId: string): Promise<void> => {
+  logger.info(`Invalidating refresh token for user ${userId}`);
   const user = await User.findByPk(userId);
   if (user) {
-    await user.update({ refresh_token: '' });
+    await user.update({ refresh_token: null });
+  } else {
+    logger.warn(`Attempted to invalidate refresh token for non-existent user ${userId}`);
   }
 };

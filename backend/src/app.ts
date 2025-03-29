@@ -5,7 +5,9 @@ import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import passport from 'passport';
 import rateLimit from 'express-rate-limit';
+import authRoutes from './routes/authRoutes';
 import gameRoutes from './routes/gameRoutes';
+import { notFoundHandler, errorHandler } from './middlewares/errorHandler';
 import './config/passport';
 
 const app = express();
@@ -47,15 +49,11 @@ if (process.env.NODE_ENV === 'development') {
 app.use(passport.initialize());
 
 // Routes
-app.use('/api/games', gameRoutes);
+app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/games', gameRoutes);
 
 // Error handling
-app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error(err.stack);
-  res.status(err.status || 500).json({
-    status: 'error',
-    message: err.message || 'Internal server error',
-  });
-});
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 export default app;

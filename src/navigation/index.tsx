@@ -100,6 +100,9 @@ const MainNavigator = () => {
           fontWeight: 'bold',
         },
         headerRight: () => <LogoutButton />,
+        contentStyle: {
+          backgroundColor: COLORS.background,
+        },
       }}
     >
       <MainStack.Screen
@@ -108,6 +111,7 @@ const MainNavigator = () => {
         options={{
           headerShown: true,
           title: 'Pickleball',
+          headerShadowVisible: false,
         }}
       />
       <MainStack.Screen
@@ -157,7 +161,14 @@ const AppNavigator = () => {
   return (
     <SafeAreaProvider>
       <NavigationContainer>
-        <RootStack.Navigator screenOptions={{ headerShown: false }}>
+        <RootStack.Navigator
+          screenOptions={{
+            headerShown: false,
+            contentStyle: {
+              backgroundColor: COLORS.primary,
+            },
+          }}
+        >
           {isAuthenticated ? (
             <RootStack.Screen name="Main" component={MainNavigator} />
           ) : (
