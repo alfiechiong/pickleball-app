@@ -34,6 +34,11 @@ app.use(
   })
 );
 
+// Body parsing middleware - moved before the debugging middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+
 // Add some debugging middleware for auth requests
 app.use((req, _res, next) => {
   if (req.path.includes('/api/v1/auth') || req.path.includes('/api/v1/games')) {
@@ -41,7 +46,7 @@ app.use((req, _res, next) => {
       path: req.path,
       method: req.method,
       headers: req.headers,
-      body: req.body,
+      body: req.body, // Now body should be parsed
       query: req.query,
     });
   }
@@ -54,11 +59,6 @@ const limiter = rateLimit({
   max: 100, // limit each IP to 100 requests per windowMs
 });
 app.use(limiter);
-
-// Body parsing middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
 
 // Logging
 if (process.env.NODE_ENV === 'development') {

@@ -11,8 +11,9 @@ export const generateToken = (user: User): string => {
     skill_level: user.skill_level,
   };
 
+  // Make sure token lasts for at least a few hours
   const options: SignOptions = {
-    expiresIn: parseInt(config.jwt.expiresIn) || '1h',
+    expiresIn: '24h', // Set to 24 hours instead of trying to parse config
   };
 
   logger.info(`Generating token for user: ${user.id} (${user.email})`);
