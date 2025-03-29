@@ -129,8 +129,14 @@ export const CreateGameScreen: React.FC = () => {
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
-      <ScrollView style={styles.scrollView}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollViewContent}
+        showsVerticalScrollIndicator={true}
+        bounces={true}
+      >
         <View style={styles.form}>
           <Text style={styles.label}>Location</Text>
           <TextInput
@@ -248,6 +254,9 @@ export const CreateGameScreen: React.FC = () => {
           >
             <Text style={styles.buttonText}>{loading ? 'Creating...' : 'Create Game'}</Text>
           </TouchableOpacity>
+
+          {/* Add bottom spacing to prevent button from overlapping with system UI */}
+          <View style={styles.bottomSpacing} />
         </View>
       </ScrollView>
 
@@ -305,8 +314,12 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
+  scrollViewContent: {
+    flexGrow: 1,
+  },
   form: {
     padding: 20,
+    paddingBottom: 0, // Remove bottom padding since we're adding the bottomSpacing view
   },
   label: {
     fontSize: 16,
@@ -375,6 +388,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     marginTop: 20,
+    marginBottom: 10,
   },
   buttonDisabled: {
     opacity: 0.7,
@@ -383,6 +397,9 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  bottomSpacing: {
+    height: Platform.OS === 'ios' ? 50 : 30, // Extra space at the bottom
   },
 });
 
