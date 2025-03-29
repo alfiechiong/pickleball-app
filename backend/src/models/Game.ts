@@ -13,6 +13,8 @@ interface GameAttributes {
   skill_level: string;
   status: 'open' | 'full' | 'cancelled' | 'completed';
   host_id: string;
+  creator_id: string;
+  notes?: string;
   created_at?: Date;
   updated_at?: Date;
   deleted_at?: Date;
@@ -31,6 +33,8 @@ class Game extends Model<GameAttributes, GameCreationAttributes> implements Game
   public skill_level!: string;
   public status!: 'open' | 'full' | 'cancelled' | 'completed';
   public host_id!: string;
+  public creator_id!: string;
+  public notes?: string;
 
   // timestamps!
   public readonly created_at!: Date;
@@ -86,6 +90,18 @@ Game.init(
         key: 'id',
       },
     },
+    creator_id: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      references: {
+        model: 'users',
+        key: 'id',
+      },
+    },
+    notes: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
   },
   {
     sequelize,
@@ -98,6 +114,11 @@ Game.init(
 Game.belongsTo(User, {
   foreignKey: 'host_id',
   as: 'host',
+});
+
+Game.belongsTo(User, {
+  foreignKey: 'creator_id',
+  as: 'creator',
 });
 
 export { Game, GameAttributes, GameCreationAttributes };

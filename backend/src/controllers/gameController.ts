@@ -21,30 +21,20 @@ export const createGame = async (req: AuthenticatedRequest, res: Response): Prom
       return;
     }
 
-    const { date, start_time, end_time, location, max_players, skill_level } = req.body;
+    const { date, start_time, end_time, location, max_players, skill_level, notes } = req.body;
 
-    // Convert date string to Date object
-    const gameDate = new Date(date);
-
-    // Create Date objects for start and end times
-    const [startHours, startMinutes] = start_time.split(':');
-    const [endHours, endMinutes] = end_time.split(':');
-
-    const startTimeDate = new Date(gameDate);
-    startTimeDate.setHours(parseInt(startHours), parseInt(startMinutes), 0);
-
-    const endTimeDate = new Date(gameDate);
-    endTimeDate.setHours(parseInt(endHours), parseInt(endMinutes), 0);
-
+    // Create game with properly formatted time strings
     const game = await Game.create({
-      date: gameDate,
-      start_time: startTimeDate,
-      end_time: endTimeDate,
+      date,
+      start_time,
+      end_time,
       location,
       max_players,
       skill_level,
       host_id: req.user.id,
+      creator_id: req.user.id,
       status: 'open',
+      notes,
     });
 
     logger.info(`Game created successfully with ID: ${game.id}`);
