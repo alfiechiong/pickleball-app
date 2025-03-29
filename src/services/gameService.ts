@@ -12,9 +12,17 @@ export interface Game {
   skill_level: 'beginner' | 'intermediate' | 'advanced' | 'pro';
   status: 'open' | 'full' | 'cancelled' | 'completed';
   creator_id: string;
+  host_id: string;
   notes?: string;
   created_at: string;
   updated_at: string;
+  host?: {
+    id: string;
+    name: string;
+    email: string;
+    skill_level: string;
+  };
+  current_players?: number;
 }
 
 export interface CreateGameData {
@@ -107,13 +115,19 @@ export const getGame = async (gameId: number): Promise<Game> => {
 
 export const listGames = async (filters?: GameFilters): Promise<Game[]> => {
   try {
+    console.log('Fetching games with filters:', filters);
     const headers = await getHeaders();
     const response = await axios.get(`${API_URL}/games`, {
       headers,
       params: filters,
     });
-    return response.data.data;
+
+    console.log('Games API response:', response.data);
+
+    // The backend directly returns the games array
+    return response.data || [];
   } catch (error) {
+    console.error('Error fetching games:', error);
     handleApiError(error);
     throw error;
   }

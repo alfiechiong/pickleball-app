@@ -14,10 +14,11 @@ interface AuthenticatedRequest extends Request {
   };
 }
 
-export const createGame = async (req: AuthenticatedRequest, res: Response) => {
+export const createGame = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     if (!req.user) {
-      return res.status(401).json({ message: 'Unauthorized' });
+      res.status(401).json({ message: 'Unauthorized' });
+      return;
     }
 
     const { date, start_time, end_time, location, max_players, skill_level } = req.body;
@@ -47,14 +48,14 @@ export const createGame = async (req: AuthenticatedRequest, res: Response) => {
     });
 
     logger.info(`Game created successfully with ID: ${game.id}`);
-    return res.status(201).json(game);
+    res.status(201).json(game);
   } catch (error) {
     logger.error('Error creating game:', error);
-    return res.status(500).json({ message: 'Error creating game', error: error.message });
+    res.status(500).json({ message: 'Error creating game', error: error.message });
   }
 };
 
-export const getGames = async (_req: Request, res: Response) => {
+export const getGames = async (_req: Request, res: Response): Promise<void> => {
   try {
     const games = await Game.findAll({
       include: [
@@ -68,14 +69,18 @@ export const getGames = async (_req: Request, res: Response) => {
         status: 'open',
       },
     });
-    return res.json(games);
+
+    logger.info(`Found ${games.length} games`);
+
+    // Return the games directly (our frontend expects this format)
+    res.json(games);
   } catch (error) {
     logger.error('Error fetching games:', error);
-    return res.status(500).json({ message: 'Error fetching games', error: error.message });
+    res.status(500).json({ message: 'Error fetching games', error: error.message });
   }
 };
 
-export const getGame = async (req: Request, res: Response) => {
+export const getGame = async (req: Request, res: Response): Promise<void> => {
   try {
     const game = await Game.findByPk(req.params.id, {
       include: [
@@ -87,28 +92,32 @@ export const getGame = async (req: Request, res: Response) => {
       ],
     });
     if (!game) {
-      return res.status(404).json({ message: 'Game not found' });
+      res.status(404).json({ message: 'Game not found' });
+      return;
     }
-    return res.json(game);
+    res.json(game);
   } catch (error) {
     logger.error('Error fetching game:', error);
-    return res.status(500).json({ message: 'Error fetching game', error: error.message });
+    res.status(500).json({ message: 'Error fetching game', error: error.message });
   }
 };
 
-export const updateGame = async (req: AuthenticatedRequest, res: Response) => {
+export const updateGame = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     if (!req.user) {
-      return res.status(401).json({ message: 'Unauthorized' });
+      res.status(401).json({ message: 'Unauthorized' });
+      return;
     }
 
     const game = await Game.findByPk(req.params.id);
     if (!game) {
-      return res.status(404).json({ message: 'Game not found' });
+      res.status(404).json({ message: 'Game not found' });
+      return;
     }
 
     if (game.host_id !== req.user.id) {
-      return res.status(403).json({ message: 'Forbidden - You can only update your own games' });
+      res.status(403).json({ message: 'Forbidden - You can only update your own games' });
+      return;
     }
 
     const { date, start_time, end_time, location, max_players, skill_level, status } = req.body;
@@ -137,34 +146,37 @@ export const updateGame = async (req: AuthenticatedRequest, res: Response) => {
     await game.update(updateData);
 
     logger.info(`Game updated successfully: ${game.id}`);
-    return res.json(game);
+    res.json(game);
   } catch (error) {
     logger.error('Error updating game:', error);
-    return res.status(500).json({ message: 'Error updating game', error: error.message });
+    res.status(500).json({ message: 'Error updating game', error: error.message });
   }
 };
 
-export const deleteGame = async (req: AuthenticatedRequest, res: Response) => {
+export const deleteGame = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     if (!req.user) {
-      return res.status(401).json({ message: 'Unauthorized' });
+      res.status(401).json({ message: 'Unauthorized' });
+      return;
     }
 
     const game = await Game.findByPk(req.params.id);
     if (!game) {
-      return res.status(404).json({ message: 'Game not found' });
+      res.status(404).json({ message: 'Game not found' });
+      return;
     }
 
     if (game.host_id !== req.user.id) {
-      return res.status(403).json({ message: 'Forbidden - You can only delete your own games' });
+      res.status(403).json({ message: 'Forbidden - You can only delete your own games' });
+      return;
     }
 
     await game.destroy();
 
     logger.info(`Game deleted successfully: ${game.id}`);
-    return res.json({ message: 'Game deleted successfully' });
+    res.json({ message: 'Game deleted successfully' });
   } catch (error) {
     logger.error('Error deleting game:', error);
-    return res.status(500).json({ message: 'Error deleting game', error: error.message });
+    res.status(500).json({ message: 'Error deleting game', error: error.message });
   }
 };

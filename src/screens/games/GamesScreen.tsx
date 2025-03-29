@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,8 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
+  RefreshControl,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -22,71 +24,89 @@ const GamesScreen: React.FC = () => {
   const { games, loading, error, loadGames } = useGame();
   const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    loadGames();
+  const fetchGames = useCallback(async () => {
+    try {
+      await loadGames();
+    } catch (err) {
+      console.error('Error loading games:', err);
+      Alert.alert('Error', 'Failed to load games. Please try again.');
+    }
   }, [loadGames]);
 
-  const onRefresh = async () => {
+  useEffect(() => {
+    fetchGames();
+  }, [fetchGames]);
+
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadGames();
+    await fetchGames();
     setRefreshing(false);
-  };
-
-  const getStatusColor = (status: Game['status']) => {
-    switch (status) {
-      case 'open':
-        return styles.openBadge;
-      case 'full':
-        return styles.fullBadge;
-      case 'completed':
-        return styles.completedBadge;
-      case 'cancelled':
-        return styles.cancelledBadge;
-      default:
-        return styles.openBadge;
-    }
-  };
-
-  const getStatusText = (status: Game['status']) => {
-    switch (status) {
-      case 'open':
-        return 'Open';
-      case 'full':
-        return 'Full';
-      case 'completed':
-        return 'Completed';
-      case 'cancelled':
-        return 'Cancelled';
-      default:
-        return 'Open';
-    }
-  };
-
-  const formatDateTime = (date: string, time: string) => {
-    const gameDate = new Date(`${date}T${time}`);
-    return gameDate.toLocaleString();
-  };
+  }, [fetchGames]);
 
   const renderGameItem = ({ item }: { item: Game }) => (
     <TouchableOpacity
       style={styles.gameCard}
-      onPress={() => navigation.navigate('GameDetails', { id: item.id.toString() })}
+      onPress={() => navigation.navigate('GameDetails', { id: item.id })}
     >
-      <Text style={styles.gameTitle}>{`${item.skill_level} Game`}</Text>
-      <View style={styles.gameDetails}>
-        <Text style={styles.gameDetailText}>📅 {formatDateTime(item.date, item.time)}</Text>
-        <Text style={styles.gameDetailText}>📍 {item.location}</Text>
-        <Text style={styles.gameDetailText}>
-          👥 {item.current_players}/{item.max_players} players
+      <Text style={styles.gameTitle}>{getGameName(item)}</Text>
+      <Text style={styles.gameDetails}>
+        {formatDate(item.date)} • {formatTime(item.start_time)} - {formatTime(item.end_time)}
+      </Text>
+      <Text style={styles.gameLocation}>{item.location}</Text>
+      <View style={styles.gameStats}>
+        <Text style={styles.statsText}>
+          Players: {item.current_players || 1}/{item.max_players}
         </Text>
-      </View>
-      <View style={styles.statusContainer}>
-        <View style={[styles.statusBadge, getStatusColor(item.status)]}>
-          <Text style={styles.statusText}>{getStatusText(item.status)}</Text>
-        </View>
+        <Text style={styles.levelBadge}>
+          {item.skill_level.charAt(0).toUpperCase() + item.skill_level.slice(1)}
+        </Text>
       </View>
     </TouchableOpacity>
   );
+
+  // Helper function to generate a game name
+  const getGameName = (game: Game) => {
+    return `Pickleball Game at ${game.location}`;
+  };
+
+  // Helper function to format dates
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'TBD';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
+
+  // Helper function to format time
+  const formatTime = (timeString: string) => {
+    if (!timeString) return 'TBD';
+
+    // If timeString is already in HH:MM format, return it
+    if (timeString.match(/^\d{1,2}:\d{2}(:\d{2})?$/)) {
+      // Convert 24h to 12h format
+      const [hours, minutes] = timeString.split(':');
+      const h = parseInt(hours, 10);
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      const hour12 = h % 12 || 12;
+      return `${hour12}:${minutes} ${ampm}`;
+    }
+
+    // Otherwise, assume it's a full datetime string
+    try {
+      const date = new Date(timeString);
+      return date.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+      });
+    } catch (e) {
+      console.error('Error formatting time:', e);
+      return timeString;
+    }
+  };
 
   if (loading && !refreshing) {
     return (
@@ -100,7 +120,7 @@ const GamesScreen: React.FC = () => {
     return (
       <View style={styles.centerContainer}>
         <Text style={styles.errorText}>{error}</Text>
-        <Button title="Retry" onPress={loadGames} size="small" />
+        <Button title="Retry" onPress={fetchGames} size="small" />
       </View>
     );
   }
@@ -108,7 +128,7 @@ const GamesScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Games</Text>
+        <Text style={styles.title}>Pickleball Games</Text>
         <Button
           title="Create Game"
           onPress={() => navigation.navigate('CreateGame')}
@@ -116,15 +136,37 @@ const GamesScreen: React.FC = () => {
         />
       </View>
 
-      <FlatList
-        data={games}
-        renderItem={renderGameItem}
-        keyExtractor={item => item.id.toString()}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.listContainer}
-        refreshing={refreshing}
-        onRefresh={onRefresh}
-      />
+      {games.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>No games found</Text>
+          <Text style={styles.emptySubText}>Be the first to create a game!</Text>
+          <Button
+            title="Create Game"
+            onPress={() => navigation.navigate('CreateGame')}
+            style={styles.createButton}
+          />
+        </View>
+      ) : (
+        <FlatList
+          data={games}
+          renderItem={renderGameItem}
+          keyExtractor={item => item.id.toString()}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.listContainer}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[COLORS.primary]}
+            />
+          }
+          ListHeaderComponent={
+            <View style={styles.listHeader}>
+              <Text style={styles.listHeaderText}>Available Games ({games.length})</Text>
+            </View>
+          }
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -160,6 +202,15 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     padding: SPACING.md,
+    paddingBottom: 80, // Extra space at the bottom
+  },
+  listHeader: {
+    marginBottom: SPACING.md,
+  },
+  listHeaderText: {
+    fontSize: FONT_SIZES.md,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
   },
   gameCard: {
     backgroundColor: COLORS.white,
@@ -175,37 +226,56 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.xs,
   },
   gameDetails: {
-    marginBottom: SPACING.sm,
-  },
-  gameDetailText: {
     fontSize: FONT_SIZES.sm,
     color: COLORS.textSecondary,
     marginBottom: SPACING.xs,
   },
-  statusContainer: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-  },
-  statusBadge: {
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: SPACING.xs,
-    borderRadius: BORDER_RADIUS.round,
-  },
-  openBadge: {
-    backgroundColor: COLORS.primaryLight,
-  },
-  fullBadge: {
-    backgroundColor: COLORS.secondaryLight,
-  },
-  completedBadge: {
-    backgroundColor: COLORS.accentLight,
-  },
-  cancelledBadge: {
-    backgroundColor: COLORS.lightGray,
-  },
-  statusText: {
-    fontSize: FONT_SIZES.xs,
+  gameLocation: {
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.textSecondary,
     fontWeight: '500',
+    marginBottom: SPACING.xs,
+  },
+  gameStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: SPACING.xs,
+  },
+  statsText: {
+    fontSize: FONT_SIZES.xs,
+    color: COLORS.textSecondary,
+  },
+  levelBadge: {
+    fontSize: FONT_SIZES.xs,
+    backgroundColor: COLORS.primaryLight,
+    color: COLORS.primary,
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+    borderRadius: BORDER_RADIUS.sm,
+    overflow: 'hidden',
+    fontWeight: '500',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: SPACING.lg,
+  },
+  emptyText: {
+    fontSize: FONT_SIZES.lg,
+    fontWeight: 'bold',
+    color: COLORS.textPrimary,
+    marginBottom: SPACING.sm,
+  },
+  emptySubText: {
+    fontSize: FONT_SIZES.md,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginBottom: SPACING.lg,
+  },
+  createButton: {
+    width: '80%',
   },
 });
 

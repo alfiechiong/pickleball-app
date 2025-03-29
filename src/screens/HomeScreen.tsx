@@ -1,34 +1,37 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import Button from '../components/Button';
 import theme from '../styles/theme';
 import { globalStyles } from '../styles/global';
 import { BottomTabParamList, MainStackNavigationProp } from '../navigation/types';
+import { Game } from '../services/gameService';
+import { useGame } from '../contexts/GameContext';
 
 const { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOW } = theme;
 
 const HomeScreen: React.FC = () => {
   const navigation = useNavigation<MainStackNavigationProp>();
+  const { games, loading, error, loadGames } = useGame();
+  const [upcomingGames, setUpcomingGames] = useState<Game[]>([]);
 
-  // Sample upcoming games data
-  const upcomingGames = [
-    {
-      id: '1',
-      title: 'Friendly Match',
-      date: 'May 15, 2024',
-      location: 'Central Park Courts',
-      participants: 4,
-    },
-    {
-      id: '2',
-      title: 'Practice Session',
-      date: 'May 18, 2024',
-      location: 'Community Center',
-      participants: 6,
-    },
-  ];
+  useEffect(() => {
+    // Load games when component mounts
+    loadGames();
+  }, [loadGames]);
+
+  useEffect(() => {
+    // Update upcomingGames with the most recent open games
+    if (games && games.length > 0) {
+      // Sort games by date - newest first
+      const sortedGames = [...games].sort(
+        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+      );
+      // Take at most 2 games
+      setUpcomingGames(sortedGames.slice(0, 2));
+    }
+  }, [games]);
 
   // Sample tournaments data
   const upcomingTournaments = [
@@ -43,6 +46,23 @@ const HomeScreen: React.FC = () => {
 
   const navigateToBottomTab = (tabName: keyof BottomTabParamList) => {
     navigation.navigate('BottomTabs', { screen: tabName });
+  };
+
+  // Helper function to format the game title
+  const formatGameTitle = (game: Game) => {
+    const skillLevel = game.skill_level.charAt(0).toUpperCase() + game.skill_level.slice(1);
+    return `${skillLevel} Game`;
+  };
+
+  // Helper function to format dates
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'TBD';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    });
   };
 
   return (
@@ -78,14 +98,18 @@ const HomeScreen: React.FC = () => {
             </Text>
           </View>
 
-          {upcomingGames.length > 0 ? (
+          {loading ? (
+            <ActivityIndicator size="small" color={COLORS.primary} style={styles.loader} />
+          ) : error ? (
+            <Text style={styles.errorText}>Error loading games</Text>
+          ) : upcomingGames.length > 0 ? (
             upcomingGames.map(game => (
               <View key={game.id} style={styles.card}>
-                <Text style={styles.cardTitle}>{game.title}</Text>
+                <Text style={styles.cardTitle}>{formatGameTitle(game)}</Text>
                 <View style={styles.cardDetails}>
-                  <Text style={styles.cardDetailText}>📅 {game.date}</Text>
+                  <Text style={styles.cardDetailText}>📅 {formatDate(game.date)}</Text>
                   <Text style={styles.cardDetailText}>📍 {game.location}</Text>
-                  <Text style={styles.cardDetailText}>👥 {game.participants} players</Text>
+                  <Text style={styles.cardDetailText}>👥 {game.max_players} players</Text>
                 </View>
                 <Button
                   title="View Details"
@@ -228,6 +252,14 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     padding: SPACING.md,
   },
+  errorText: {
+    textAlign: 'center',
+    color: COLORS.error,
+    padding: SPACING.md,
+  },
+  loader: {
+    padding: SPACING.md,
+  },
   tipsContainer: {
     padding: SPACING.md,
     marginBottom: SPACING.xl,
@@ -248,7 +280,6 @@ const styles = StyleSheet.create({
   tipText: {
     fontSize: FONT_SIZES.md,
     color: COLORS.textPrimary,
-    lineHeight: 22,
   },
 });
 

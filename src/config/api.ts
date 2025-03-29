@@ -1,5 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// Use localhost for iOS simulator or Android emulator
+// For physical devices, this would need to be the actual IP address of your computer
 export const API_URL = 'http://localhost:3000/api/v1';
 
 export const getHeaders = async () => {
