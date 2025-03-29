@@ -5,6 +5,53 @@ import { comparePasswords, hashPassword } from '../utils/password';
 import { generateRefreshToken } from '../utils/refreshToken';
 import createError from 'http-errors';
 
+// Define the authenticated request type
+interface AuthenticatedRequest extends Request {
+  user?: {
+    id: string;
+    email: string;
+    name?: string;
+    skill_level?: string;
+    password?: string;
+  };
+}
+
+/**
+ * Get current authenticated user
+ */
+export const getMe = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      throw createError(401, 'Not authenticated');
+    }
+
+    // Find the user from the database to get the latest data
+    const user = await User.findByPk(req.user.id);
+
+    if (!user) {
+      throw createError(404, 'User not found');
+    }
+
+    res.json({
+      status: 'success',
+      data: {
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          skill_level: user.skill_level,
+        },
+      },
+    });
+  } catch (err: any) {
+    console.error('Error in getMe:', err);
+    res.status(err.status || 500).json({
+      status: 'error',
+      message: err.message || 'Error getting user data',
+    });
+  }
+};
+
 /**
  * Register a new user
  */
