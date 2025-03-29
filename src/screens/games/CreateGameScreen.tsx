@@ -9,12 +9,14 @@ import {
   KeyboardAvoidingView,
   Platform,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 import { useAuth } from '../../contexts/AuthContext';
-import { createGame, CreateGameData } from '../../services/gameService';
+import { useGame } from '../../contexts/GameContext';
+import { CreateGameData } from '../../services/gameService';
 import { format } from 'date-fns';
 
 const skillLevels = ['beginner', 'intermediate', 'advanced', 'pro'] as const;
@@ -35,6 +37,7 @@ interface FormData {
 export const CreateGameScreen: React.FC = () => {
   const navigation = useNavigation();
   const { token } = useAuth();
+  const { createGame, loading: gameContextLoading, error: gameError } = useGame();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     location: '',
@@ -57,6 +60,7 @@ export const CreateGameScreen: React.FC = () => {
       // Validate required fields
       if (!formData.location.trim()) {
         Alert.alert('Error', 'Please enter a location');
+        setLoading(false);
         return;
       }
 
@@ -81,6 +85,7 @@ export const CreateGameScreen: React.FC = () => {
 
       if (endTime <= startTime) {
         Alert.alert('Error', 'End time must be after start time');
+        setLoading(false);
         return;
       }
 
@@ -92,21 +97,19 @@ export const CreateGameScreen: React.FC = () => {
 
       if (gameDate < today) {
         Alert.alert('Error', 'Game date cannot be in the past');
+        setLoading(false);
         return;
       }
 
-      console.log('Token available:', !!token);
       console.log('Submitting game data:', JSON.stringify(gameData, null, 2));
 
-      if (!token) {
-        throw new Error('Not authenticated');
-      }
-
-      const createdGame = await createGame(gameData, token);
-      console.log('Created game:', JSON.stringify(createdGame, null, 2));
-
-      Alert.alert('Success', 'Game created successfully!');
-      navigation.goBack();
+      await createGame(gameData);
+      Alert.alert('Success', 'Game created successfully!', [
+        {
+          text: 'OK',
+          onPress: () => navigation.goBack(),
+        },
+      ]);
     } catch (error) {
       console.error('Error in handleSubmit:', error);
       if (error instanceof Error) {
@@ -125,6 +128,8 @@ export const CreateGameScreen: React.FC = () => {
     }
   };
 
+  const isSubmitDisabled = loading || gameContextLoading;
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -138,6 +143,12 @@ export const CreateGameScreen: React.FC = () => {
         bounces={true}
       >
         <View style={styles.form}>
+          {gameError && (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>{gameError}</Text>
+            </View>
+          )}
+
           <Text style={styles.label}>Location</Text>
           <TextInput
             style={styles.input}
@@ -248,11 +259,18 @@ export const CreateGameScreen: React.FC = () => {
           />
 
           <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
+            style={[styles.button, isSubmitDisabled && styles.buttonDisabled]}
             onPress={handleSubmit}
-            disabled={loading}
+            disabled={isSubmitDisabled}
           >
-            <Text style={styles.buttonText}>{loading ? 'Creating...' : 'Create Game'}</Text>
+            {isSubmitDisabled ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color="#fff" />
+                <Text style={[styles.buttonText, styles.loadingText]}>Creating...</Text>
+              </View>
+            ) : (
+              <Text style={styles.buttonText}>Create Game</Text>
+            )}
           </TouchableOpacity>
 
           {/* Add bottom spacing to prevent button from overlapping with system UI */}
@@ -320,6 +338,18 @@ const styles = StyleSheet.create({
   form: {
     padding: 20,
     paddingBottom: 0, // Remove bottom padding since we're adding the bottomSpacing view
+  },
+  errorContainer: {
+    backgroundColor: '#ffebee',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#ffcdd2',
+  },
+  errorText: {
+    color: '#d32f2f',
+    fontSize: 14,
   },
   label: {
     fontSize: 16,
@@ -397,6 +427,14 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    marginLeft: 8,
   },
   bottomSpacing: {
     height: Platform.OS === 'ios' ? 50 : 30, // Extra space at the bottom

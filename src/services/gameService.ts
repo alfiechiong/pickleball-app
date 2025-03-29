@@ -71,11 +71,8 @@ export const createGame = async (gameData: CreateGameData, token: string): Promi
 
     console.log('Game creation response:', response.data);
 
-    if (response.data.status === 'error') {
-      throw new Error(response.data.message);
-    }
-
-    return response.data.data.game;
+    // Our backend returns the game object directly
+    return response.data;
   } catch (error) {
     console.error('Game creation error:', error);
     if (axios.isAxiosError(error)) {
@@ -91,22 +88,22 @@ export const createGame = async (gameData: CreateGameData, token: string): Promi
   }
 };
 
-export const updateGame = async (gameId: number, data: UpdateGameData): Promise<Game> => {
+export const updateGame = async (gameId: string, data: UpdateGameData): Promise<Game> => {
   try {
     const headers = await getHeaders();
     const response = await axios.put(`${API_URL}/games/${gameId}`, data, { headers });
-    return response.data.data;
+    return response.data;
   } catch (error) {
     handleApiError(error);
     throw error;
   }
 };
 
-export const getGame = async (gameId: number): Promise<Game> => {
+export const getGame = async (gameId: string): Promise<Game> => {
   try {
     const headers = await getHeaders();
     const response = await axios.get(`${API_URL}/games/${gameId}`, { headers });
-    return response.data.data;
+    return response.data;
   } catch (error) {
     handleApiError(error);
     throw error;
@@ -133,33 +130,33 @@ export const listGames = async (filters?: GameFilters): Promise<Game[]> => {
   }
 };
 
-export const joinGame = async (gameId: number): Promise<Game> => {
+export const joinGame = async (gameId: string): Promise<Game> => {
   try {
     const headers = await getHeaders();
     const response = await axios.post(`${API_URL}/games/${gameId}/join`, {}, { headers });
-    return response.data.data;
+    return response.data;
   } catch (error) {
     handleApiError(error);
     throw error;
   }
 };
 
-export const leaveGame = async (gameId: number): Promise<Game> => {
+export const leaveGame = async (gameId: string): Promise<Game> => {
   try {
     const headers = await getHeaders();
     const response = await axios.post(`${API_URL}/games/${gameId}/leave`, {}, { headers });
-    return response.data.data;
+    return response.data;
   } catch (error) {
     handleApiError(error);
     throw error;
   }
 };
 
-export const cancelGame = async (gameId: number): Promise<Game> => {
+export const cancelGame = async (gameId: string): Promise<Game> => {
   try {
     const headers = await getHeaders();
     const response = await axios.post(`${API_URL}/games/${gameId}/cancel`, {}, { headers });
-    return response.data.data;
+    return response.data;
   } catch (error) {
     handleApiError(error);
     throw error;

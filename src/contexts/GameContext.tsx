@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import * as gameService from '../services/gameService';
 import { Game, CreateGameData, UpdateGameData, GameFilters } from '../services/gameService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface GameContextType {
   games: Game[];
@@ -8,12 +9,12 @@ interface GameContextType {
   loading: boolean;
   error: string | null;
   loadGames: (filters?: GameFilters) => Promise<void>;
-  loadGame: (gameId: number) => Promise<void>;
-  createGame: (data: CreateGameData) => Promise<void>;
-  updateGame: (gameId: number, data: UpdateGameData) => Promise<void>;
-  joinGame: (gameId: number) => Promise<void>;
-  leaveGame: (gameId: number) => Promise<void>;
-  cancelGame: (gameId: number) => Promise<void>;
+  loadGame: (gameId: string) => Promise<void>;
+  createGame: (data: CreateGameData) => Promise<Game>;
+  updateGame: (gameId: string, data: UpdateGameData) => Promise<void>;
+  joinGame: (gameId: string) => Promise<void>;
+  leaveGame: (gameId: string) => Promise<void>;
+  cancelGame: (gameId: string) => Promise<void>;
   clearError: () => void;
 }
 
@@ -46,7 +47,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  const loadGame = useCallback(async (gameId: number) => {
+  const loadGame = useCallback(async (gameId: string) => {
     try {
       setLoading(true);
       setError(null);
@@ -59,14 +60,29 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  const createGame = async (data: CreateGameData) => {
+  const createGame = async (data: CreateGameData): Promise<Game> => {
     try {
       setLoading(true);
       setError(null);
-      const newGame = await gameService.createGame(data);
+
+      // Get the auth token
+      const token = await AsyncStorage.getItem('accessToken');
+      if (!token) {
+        throw new Error('Authentication required. Please log in.');
+      }
+
+      // Call the game service to create the game
+      const newGame = await gameService.createGame(data, token);
+
+      console.log('Game created successfully:', newGame);
+
+      // Update the games list with the new game
       setGames(prevGames => [...prevGames, newGame]);
       setSelectedGame(newGame);
+
+      return newGame;
     } catch (error) {
+      console.error('Failed to create game:', error);
       setError(error instanceof Error ? error.message : 'Failed to create game');
       throw error;
     } finally {
@@ -74,7 +90,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const updateGame = async (gameId: number, data: UpdateGameData) => {
+  const updateGame = async (gameId: string, data: UpdateGameData) => {
     try {
       setLoading(true);
       setError(null);
@@ -91,7 +107,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const joinGame = async (gameId: number) => {
+  const joinGame = async (gameId: string) => {
     try {
       setLoading(true);
       setError(null);
@@ -108,7 +124,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const leaveGame = async (gameId: number) => {
+  const leaveGame = async (gameId: string) => {
     try {
       setLoading(true);
       setError(null);
@@ -125,7 +141,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const cancelGame = async (gameId: number) => {
+  const cancelGame = async (gameId: string) => {
     try {
       setLoading(true);
       setError(null);
