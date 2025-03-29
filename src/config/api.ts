@@ -31,6 +31,14 @@ export const handleApiError = (error: any) => {
       data: error.response.data,
       headers: error.response.headers,
     });
+
+    // Handle rate limiting errors
+    if (error.response.status === 429) {
+      const retryAfter = error.response.headers['retry-after'];
+      const waitTime = retryAfter ? parseInt(retryAfter, 10) : 30;
+      throw new Error(`Too many requests. Please try again in ${waitTime} seconds.`);
+    }
+
     throw new Error(error.response.data.message || 'An error occurred');
   } else if (error.request) {
     // The request was made but no response was received

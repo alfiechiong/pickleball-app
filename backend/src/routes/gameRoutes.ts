@@ -29,6 +29,9 @@ router.post(
 // Get all games
 router.get('/', getGames);
 
+// Get all games a user has joined - this must be before /:id to avoid conflict
+router.get('/user/:userId?', passport.authenticate('jwt', { session: false }), getUserGames);
+
 // Get a specific game by ID
 router.get('/:id', getGame);
 
@@ -50,8 +53,5 @@ router.put(
   passport.authenticate('jwt', { session: false }),
   updateParticipantStatus
 );
-
-// Get all games a user has joined
-router.get('/user/:userId?', passport.authenticate('jwt', { session: false }), getUserGames);
 
 export default router;

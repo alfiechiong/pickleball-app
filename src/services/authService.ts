@@ -2,6 +2,11 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL, getHeaders, handleApiError } from '../config/api';
 
+// Track login attempts to prevent duplicate requests
+let isLoginInProgress = false;
+let lastLoginAttempt = 0;
+const LOGIN_COOLDOWN_MS = 2000; // Minimum time between login attempts
+
 export interface User {
   id: string;
   name: string;
@@ -64,6 +69,22 @@ export const register = async (data: RegisterData): Promise<AuthResponse> => {
 
 export const login = async (credentials: LoginCredentials): Promise<AuthResponse> => {
   try {
+    // Check if a login is already in progress
+    if (isLoginInProgress) {
+      console.log('Login already in progress, please wait...');
+      throw new Error('Login already in progress, please wait');
+    }
+
+    // Check if we're hitting login too frequently
+    const now = Date.now();
+    if (now - lastLoginAttempt < LOGIN_COOLDOWN_MS) {
+      console.log('Please wait before trying to login again');
+      throw new Error('Please wait before trying to login again');
+    }
+
+    lastLoginAttempt = now;
+    isLoginInProgress = true;
+
     console.log('Logging in with credentials:', { email: credentials.email });
     const response = await axios.post(`${API_URL}/auth/login`, credentials);
     console.log('Login response:', response.data);
@@ -79,8 +100,20 @@ export const login = async (credentials: LoginCredentials): Promise<AuthResponse
     return response.data;
   } catch (error) {
     console.error('Login error:', error);
+
+    // Check for rate limiting error (429)
+    if (axios.isAxiosError(error) && error.response?.status === 429) {
+      const retryAfter = error.response.headers['retry-after'];
+      const waitTime = retryAfter ? parseInt(retryAfter, 10) : 30;
+      console.log(`Rate limited, please try again in ${waitTime} seconds`);
+      throw new Error(`Too many login attempts. Please try again in ${waitTime} seconds.`);
+    }
+
     handleApiError(error);
     throw error;
+  } finally {
+    // Reset the login in progress flag
+    isLoginInProgress = false;
   }
 };
 

@@ -22,6 +22,7 @@ import RegisterScreen from '../screens/auth/RegisterScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 import HomeScreen from '../screens/HomeScreen';
 import GamesScreen from '../screens/games/GamesScreen';
+import MyGamesScreen from '../screens/games/MyGamesScreen';
 import GameDetailsScreen from '../screens/games/GameDetailsScreen';
 import CreateGameScreen from '../screens/games/CreateGameScreen';
 import TournamentsScreen from '../screens/tournaments/TournamentsScreen';
@@ -66,6 +67,8 @@ const BottomTabNavigator = () => {
             iconName = focused ? 'home' : 'home-outline';
           } else if (route.name === 'Games') {
             iconName = focused ? 'tennisball' : 'tennisball-outline';
+          } else if (route.name === 'MyGames') {
+            iconName = focused ? 'list' : 'list-outline';
           } else if (route.name === 'Tournaments') {
             iconName = focused ? 'trophy' : 'trophy-outline';
           } else if (route.name === 'Profile') {
@@ -81,6 +84,7 @@ const BottomTabNavigator = () => {
     >
       <BottomTab.Screen name="Home" component={HomeScreen} />
       <BottomTab.Screen name="Games" component={GamesScreen} />
+      <BottomTab.Screen name="MyGames" component={MyGamesScreen} options={{ title: 'My Games' }} />
       <BottomTab.Screen name="Tournaments" component={TournamentsScreen} />
       <BottomTab.Screen name="Profile" component={ProfileScreen} />
     </BottomTab.Navigator>

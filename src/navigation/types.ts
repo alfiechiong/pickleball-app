@@ -11,12 +11,12 @@ export type AuthStackParamList = {
 
 // Main Stack
 export type MainStackParamList = {
-  BottomTabs: NavigatorScreenParams<BottomTabParamList>;
+  BottomTabs: { screen: keyof BottomTabParamList } & NavigatorScreenParams<BottomTabParamList>;
   GameDetails: { id: string };
+  GameRequests: { gameId: string };
   CreateGame: undefined;
-  TournamentDetails: { id: string };
-  CreateTournament: undefined;
-  Profile: undefined;
+  Auth: undefined;
+  EditProfile: undefined;
   Settings: undefined;
 };
 
@@ -24,6 +24,7 @@ export type MainStackParamList = {
 export type BottomTabParamList = {
   Home: undefined;
   Games: undefined;
+  MyGames: undefined;
   Tournaments: undefined;
   Profile: undefined;
 };

@@ -1,8 +1,11 @@
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
-import { API_URL } from '@env';
+import { API_URL } from '../config/constants';
 
 // Types
 import { ApiResponse } from '../types';
+
+// Log the API URL when service is initialized
+console.log('API Service initialized with baseURL:', API_URL);
 
 class ApiService {
   private instance: AxiosInstance;
@@ -18,6 +21,7 @@ class ApiService {
       timeout: 15000, // 15 seconds
     });
 
+    console.log('Axios instance created with baseURL:', this.instance.defaults.baseURL);
     this.setupInterceptors();
   }
 
@@ -122,6 +126,7 @@ class ApiService {
 
   // Helper methods for common HTTP methods
   public async get<T>(url: string, params?: any): Promise<ApiResponse<T>> {
+    console.log(`API GET request to: ${this.instance.defaults.baseURL}${url}`);
     return this.request<T>({ method: 'GET', url, params });
   }
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -41,6 +41,7 @@ const GameDetailsScreen: React.FC = () => {
   const [joinLoading, setJoinLoading] = useState(false);
   const [userParticipation, setUserParticipation] = useState<GameParticipant | null>(null);
   const [actionLoading, setActionLoading] = useState<{ [key: string]: boolean }>({});
+  const loadedParticipantsForGameId = useRef<string | null>(null);
 
   const isCreator = selectedGame?.creator_id === user?.id;
 
@@ -49,8 +50,9 @@ const GameDetailsScreen: React.FC = () => {
   }, [gameId, loadGame]);
 
   useEffect(() => {
-    if (selectedGame) {
+    if (selectedGame && loadedParticipantsForGameId.current !== gameId) {
       loadGameParticipants(gameId);
+      loadedParticipantsForGameId.current = gameId;
     }
   }, [selectedGame, gameId, loadGameParticipants]);
 
@@ -60,6 +62,14 @@ const GameDetailsScreen: React.FC = () => {
       setUserParticipation(participation || null);
     }
   }, [gameParticipants, user]);
+
+  // Reset the ref when unmounting or when gameId changes
+  useEffect(() => {
+    return () => {
+      // Reset when component unmounts
+      loadedParticipantsForGameId.current = null;
+    };
+  }, [gameId]);
 
   const handleJoinGame = async () => {
     try {
@@ -86,6 +96,8 @@ const GameDetailsScreen: React.FC = () => {
     try {
       setActionLoading(prev => ({ ...prev, [participantId]: true }));
       await updateParticipantStatus(gameId, participantId, status);
+      // Reset the ref to allow reloading participants after status update
+      loadedParticipantsForGameId.current = null;
       Alert.alert(
         status === 'approved' ? 'Player Approved' : 'Player Rejected',
         `You have ${status === 'approved' ? 'approved' : 'rejected'} the player's request.`
@@ -130,8 +142,12 @@ const GameDetailsScreen: React.FC = () => {
     );
   }
 
-  const pendingParticipants = gameParticipants.filter(p => p.status === 'pending');
-  const approvedParticipants = gameParticipants.filter(p => p.status === 'approved');
+  const pendingParticipants = gameParticipants
+    ? gameParticipants.filter(p => p.status === 'pending')
+    : [];
+  const approvedParticipants = gameParticipants
+    ? gameParticipants.filter(p => p.status === 'approved')
+    : [];
   const canJoin = !isCreator && !userParticipation && selectedGame.status === 'open';
 
   return (
@@ -277,6 +293,20 @@ const GameDetailsScreen: React.FC = () => {
                   </View>
                 </View>
               ))}
+            </View>
+          )}
+
+          {/* Host Controls */}
+          {isCreator && (
+            <View style={styles.hostControlsContainer}>
+              <Text style={styles.sectionTitle}>Host Controls</Text>
+
+              <Button
+                title={`Manage Requests (${pendingParticipants.length})`}
+                onPress={() => navigation.navigate('GameRequests', { gameId: selectedGame.id })}
+                style={styles.actionButton}
+                type="secondary"
+              />
             </View>
           )}
         </View>
@@ -467,6 +497,9 @@ const styles = StyleSheet.create({
   },
   button: {
     marginTop: SPACING.md,
+  },
+  hostControlsContainer: {
+    marginBottom: SPACING.lg,
   },
 });
 

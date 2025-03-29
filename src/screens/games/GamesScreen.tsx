@@ -42,6 +42,7 @@ const GamesScreen: React.FC = () => {
     if (!user) return;
 
     try {
+      console.log('Fetching user participations...');
       const userGames = await gameParticipantService.getUserGames();
       const participationMap: { [gameId: string]: string } = {};
 
@@ -55,18 +56,33 @@ const GamesScreen: React.FC = () => {
     } catch (err) {
       console.error('Error loading user participations:', err);
     }
-  }, [user]);
+  }, [user?.id]);
 
   useEffect(() => {
     fetchGames();
-    fetchUserParticipations();
-  }, [fetchGames, fetchUserParticipations]);
+  }, [fetchGames]);
+
+  useEffect(() => {
+    if (user) {
+      fetchUserParticipations();
+    }
+  }, [fetchUserParticipations, user]);
 
   const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await Promise.all([fetchGames(), fetchUserParticipations()]);
-    setRefreshing(false);
-  }, [fetchGames, fetchUserParticipations]);
+    try {
+      setRefreshing(true);
+      // First load games, then participations only if user is logged in
+      await fetchGames();
+      if (user) {
+        await fetchUserParticipations();
+      }
+    } catch (error) {
+      console.error('Error during refresh:', error);
+      Alert.alert('Refresh Failed', 'Unable to refresh data. Please try again later.');
+    } finally {
+      setRefreshing(false);
+    }
+  }, [fetchGames, fetchUserParticipations, user]);
 
   const handleJoinGame = async (gameId: string) => {
     try {

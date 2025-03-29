@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as authService from '../services/authService';
 import { User, LoginCredentials, RegisterData } from '../services/authService';
+import apiService from '../services/api';
 
 interface AuthContextType {
   user: User | null;
@@ -45,6 +46,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (storedToken) {
         setToken(storedToken);
+        apiService.setToken(storedToken);
         try {
           const user = await authService.getCurrentUser();
           console.log('User retrieved successfully:', user);
@@ -54,6 +56,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // If getting user fails, clear the token
           await AsyncStorage.removeItem('accessToken');
           setToken(null);
+          apiService.clearToken();
         }
       }
     } catch (error) {
@@ -70,6 +73,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const response = await authService.login(credentials);
       setUser(response.data.user);
       setToken(response.data.token);
+      apiService.setToken(response.data.token);
 
       console.log(
         'Login successful, saving token:',
@@ -94,6 +98,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const response = await authService.register(data);
       setUser(response.data.user);
       setToken(response.data.token);
+      apiService.setToken(response.data.token);
 
       console.log(
         'Registration successful, saving token:',
@@ -124,6 +129,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Clear state
       setUser(null);
       setToken(null);
+      apiService.clearToken();
     } catch (error) {
       console.error('Logout error:', error);
       setError(error instanceof Error ? error.message : 'An error occurred during logout');
@@ -133,6 +139,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await AsyncStorage.removeItem('refreshToken');
       setUser(null);
       setToken(null);
+      apiService.clearToken();
       throw error;
     }
   };

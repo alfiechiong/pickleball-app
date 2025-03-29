@@ -1,5 +1,5 @@
 import { Model, DataTypes, Optional } from 'sequelize';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { sequelize } from './index';
 
 // These are all the attributes in the User model

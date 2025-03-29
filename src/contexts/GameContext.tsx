@@ -182,6 +182,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setLoading(true);
       setError(null);
+      // Initialize with empty array before API call
+      setGameParticipants([]);
       const participants = await gameParticipantService.getGameParticipants(gameId);
       setGameParticipants(participants);
     } catch (error) {
@@ -194,12 +196,46 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loadUserGames = async () => {
     try {
+      // Skip if already loading
+      if (loading) {
+        console.log('Already loading user games, skipping...');
+        return;
+      }
+
       setLoading(true);
       setError(null);
-      const userGamesList = await gameParticipantService.getUserGames();
-      setUserGames(userGamesList);
+      console.log('Fetching user games...');
+
+      try {
+        const userGamesList = await gameParticipantService.getUserGames();
+        console.log('User games fetched successfully:', userGamesList);
+
+        // Check if the response is valid but empty
+        if (Array.isArray(userGamesList) && userGamesList.length === 0) {
+          console.log('No games found for user');
+          // Setting empty array without error - this is a valid state, not an error
+          setUserGames([]);
+          // Optional: Set a non-error informational message
+          setError('No games found');
+        } else {
+          setUserGames(userGamesList);
+          setError(null);
+        }
+      } catch (apiError) {
+        console.error('API error loading user games:', apiError);
+
+        // Special handling for authentication errors
+        if (apiError instanceof Error && apiError.message.includes('Authentication required')) {
+          setUserGames([]);
+          setError('Authentication required');
+          return;
+        }
+
+        throw apiError; // Re-throw for the outer catch
+      }
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to load your games');
+      console.error('Failed to load user games:', error);
+      setError(error instanceof Error ? error.message : 'Failed to load user games');
       throw error;
     } finally {
       setLoading(false);

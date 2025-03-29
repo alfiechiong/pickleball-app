@@ -54,7 +54,15 @@ const LoginScreen: React.FC = () => {
       clearError();
       await login(data);
     } catch (err) {
-      Alert.alert('Login Failed', error || 'An error occurred while logging in');
+      const errorMessage =
+        err instanceof Error ? err.message : 'An error occurred while logging in';
+
+      // Check if this is a rate limiting error
+      if (errorMessage.includes('too many') || errorMessage.includes('try again in')) {
+        Alert.alert('Rate Limited', errorMessage);
+      } else {
+        Alert.alert('Login Failed', errorMessage);
+      }
     }
   };
 

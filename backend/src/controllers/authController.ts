@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { User } from '../models/User';
 import { generateToken } from '../utils/jwt';
-import { comparePasswords, hashPassword } from '../utils/password';
+import { hashPassword } from '../utils/password';
 import { generateRefreshToken } from '../utils/refreshToken';
 import createError from 'http-errors';
 
@@ -104,8 +104,8 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       throw createError(401, 'Invalid credentials');
     }
 
-    // Verify password
-    const isPasswordValid = await comparePasswords(password, user.password);
+    // Verify password using the User model method
+    const isPasswordValid = await user.comparePassword(password);
     if (!isPasswordValid) {
       throw createError(401, 'Invalid credentials');
     }
