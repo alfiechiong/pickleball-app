@@ -38,10 +38,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const checkAuthStatus = async () => {
     try {
       const storedToken = await AsyncStorage.getItem('accessToken');
+      console.log(
+        'Checking auth status, token:',
+        storedToken ? `${storedToken.substring(0, 15)}...` : 'No token'
+      );
+
       if (storedToken) {
         setToken(storedToken);
-        const user = await authService.getCurrentUser();
-        setUser(user);
+        try {
+          const user = await authService.getCurrentUser();
+          console.log('User retrieved successfully:', user);
+          setUser(user);
+        } catch (error) {
+          console.error('Error getting current user:', error);
+          // If getting user fails, clear the token
+          await AsyncStorage.removeItem('accessToken');
+          setToken(null);
+        }
       }
     } catch (error) {
       console.error('Auth status check failed:', error);
@@ -53,11 +66,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (credentials: LoginCredentials) => {
     try {
       setError(null);
+      console.log('Logging in with:', credentials.email);
       const response = await authService.login(credentials);
       setUser(response.data.user);
       setToken(response.data.token);
+
+      console.log(
+        'Login successful, saving token:',
+        response.data.token ? `${response.data.token.substring(0, 15)}...` : 'No token'
+      );
       await AsyncStorage.setItem('accessToken', response.data.token);
+
+      if (response.data.refreshToken) {
+        await AsyncStorage.setItem('refreshToken', response.data.refreshToken);
+      }
     } catch (error) {
+      console.error('Login error:', error);
       setError(error instanceof Error ? error.message : 'An error occurred during login');
       throw error;
     }
@@ -66,11 +90,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (data: RegisterData) => {
     try {
       setError(null);
+      console.log('Registering with:', data.email);
       const response = await authService.register(data);
       setUser(response.data.user);
       setToken(response.data.token);
+
+      console.log(
+        'Registration successful, saving token:',
+        response.data.token ? `${response.data.token.substring(0, 15)}...` : 'No token'
+      );
       await AsyncStorage.setItem('accessToken', response.data.token);
+
+      if (response.data.refreshToken) {
+        await AsyncStorage.setItem('refreshToken', response.data.refreshToken);
+      }
     } catch (error) {
+      console.error('Registration error:', error);
       setError(error instanceof Error ? error.message : 'An error occurred during registration');
       throw error;
     }
@@ -79,14 +114,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     try {
       setError(null);
+      console.log('Logging out, removing tokens');
       await authService.logout();
+
+      // Clear tokens
       await AsyncStorage.removeItem('accessToken');
+      await AsyncStorage.removeItem('refreshToken');
+
+      // Clear state
       setUser(null);
       setToken(null);
     } catch (error) {
+      console.error('Logout error:', error);
       setError(error instanceof Error ? error.message : 'An error occurred during logout');
+
       // Still clear local state even if API call fails
       await AsyncStorage.removeItem('accessToken');
+      await AsyncStorage.removeItem('refreshToken');
       setUser(null);
       setToken(null);
       throw error;

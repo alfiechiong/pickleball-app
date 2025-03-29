@@ -5,21 +5,10 @@ import { comparePasswords, hashPassword } from '../utils/password';
 import { generateRefreshToken } from '../utils/refreshToken';
 import createError from 'http-errors';
 
-// Define the authenticated request type
-interface AuthenticatedRequest extends Request {
-  user?: {
-    id: string;
-    email: string;
-    name?: string;
-    skill_level?: string;
-    password?: string;
-  };
-}
-
 /**
  * Get current authenticated user
  */
-export const getMe = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+export const getMe = async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.user) {
       throw createError(401, 'Not authenticated');

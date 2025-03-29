@@ -3,18 +3,7 @@ import { Game } from '../models/game';
 import { User } from '../models/User';
 import logger from '../utils/logger';
 
-// Define the authenticated request type
-interface AuthenticatedRequest extends Request {
-  user?: {
-    id: string;
-    email: string;
-    name: string;
-    skill_level: string;
-    password: string;
-  };
-}
-
-export const createGame = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+export const createGame = async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.user) {
       res.status(401).json({ message: 'Unauthorized' });
@@ -92,7 +81,7 @@ export const getGame = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-export const updateGame = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+export const updateGame = async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.user) {
       res.status(401).json({ message: 'Unauthorized' });
@@ -143,7 +132,7 @@ export const updateGame = async (req: AuthenticatedRequest, res: Response): Prom
   }
 };
 
-export const deleteGame = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+export const deleteGame = async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.user) {
       res.status(401).json({ message: 'Unauthorized' });

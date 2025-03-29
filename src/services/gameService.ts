@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { API_URL, getHeaders, handleApiError } from '../config/api';
 import { User } from './authService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface Game {
   id: string;
@@ -51,21 +52,33 @@ export interface GameFilters {
   location?: string;
 }
 
-export const createGame = async (gameData: CreateGameData, token: string): Promise<Game> => {
+export const createGame = async (gameData: CreateGameData, token?: string): Promise<Game> => {
   try {
-    console.log('Creating game with data:', {
-      url: `${API_URL}/games`,
-      data: gameData,
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    // Get token if not provided
+    let authToken = token;
+    if (!authToken) {
+      authToken = (await AsyncStorage.getItem('accessToken')) || '';
+      console.log(
+        'Retrieved token from storage:',
+        authToken ? `${authToken.substring(0, 15)}...` : 'No token'
+      );
+    }
+
+    if (!authToken) {
+      throw new Error('Authentication required. Please log in.');
+    }
+
+    console.log(
+      'Creating game with token:',
+      authToken ? `${authToken.substring(0, 15)}...` : 'No token'
+    );
+    console.log('Game data:', JSON.stringify(gameData, null, 2));
+    console.log('API URL:', `${API_URL}/games`);
 
     const response = await axios.post(`${API_URL}/games`, gameData, {
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${authToken}`,
       },
     });
 

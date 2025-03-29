@@ -9,13 +9,22 @@ const options = {
   secretOrKey: config.jwt.secret,
 };
 
+logger.info(`JWT strategy initialized with secret key: ${config.jwt.secret.substring(0, 5)}...`);
+
 passport.use(
   new JwtStrategy(options, async (payload, done) => {
     try {
+      logger.info(`JWT authentication attempt for payload: ${JSON.stringify(payload)}`);
+
+      if (!payload.id) {
+        logger.warn('JWT payload missing id field');
+        return done(null, false);
+      }
+
       const user = await User.findByPk(payload.id);
 
       if (user) {
-        logger.debug(`User ${user.id} authenticated via JWT`);
+        logger.info(`User ${user.id} (${user.email}) authenticated via JWT`);
         return done(null, user);
       }
 

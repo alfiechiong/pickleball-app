@@ -1,8 +1,15 @@
-import { UserAttributes } from '../../models/User';
+import { User as UserModel } from '../../models/User';
 
 declare global {
   namespace Express {
-    // eslint-disable-next-line @typescript-eslint/no-empty-interface
-    interface User extends UserAttributes {}
+    // Extend the User interface
+    interface User {
+      id: string;
+      email: string;
+      name: string;
+      skill_level: string;
+    }
   }
 }
+
+export {};

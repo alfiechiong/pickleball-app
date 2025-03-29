@@ -14,19 +14,39 @@ const app = express();
 
 // Security middleware
 app.use(helmet());
+
+// CORS configuration
+const isDevelopment = process.env.NODE_ENV === 'development';
 app.use(
   cors({
-    origin: [
-      'http://localhost:19006',
-      'http://localhost:19000',
-      'http://localhost:19001',
-      'http://localhost:19002',
-    ],
+    // In development, allow all origins
+    origin: isDevelopment
+      ? '*'
+      : [
+          'http://localhost:19006',
+          'http://localhost:19000',
+          'http://localhost:19001',
+          'http://localhost:19002',
+        ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
+
+// Add some debugging middleware for auth requests
+app.use((req, _res, next) => {
+  if (req.path.includes('/api/v1/auth') || req.path.includes('/api/v1/games')) {
+    console.log('API Request:', {
+      path: req.path,
+      method: req.method,
+      headers: req.headers,
+      body: req.body,
+      query: req.query,
+    });
+  }
+  next();
+});
 
 // Rate limiting
 const limiter = rateLimit({
